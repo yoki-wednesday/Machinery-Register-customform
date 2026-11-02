@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>機械台帳システム</title>
+    <!-- Tailwind CSS v4 -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4.3.2/dist/index.global.js"
+        integrity="sha256-C8MgRd2JfAY/SWbGCLu+Nz4DX8r8s92O47MV1eYWVBA=" crossorigin="anonymous"></script>
+    <!-- daisyUI v5 (CSS) -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5.0.0-beta.8/daisyui.css" rel="stylesheet" type="text/css" />
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        /* ==========================================================
+           UI仕様書準拠: Steam風ダークモード & 視認性重視ライトモード
+           ========================================================== */
+        :root,
+        [data-theme="light"] {
+            --color-base-100: #ffffff;
+            /* カード・ヘッダー背景 */
+            --color-base-200: #ebf0f5;
+            /* 全体背景（薄いブルーグレー） */
+            --color-base-300: #dcdde0;
+            /* ボーダー・コンポーネント背景 */
+            --color-text-base-content: #1a2530;
+            /* メイン文字色 */
+
+            --color-primary: #1078b5;
+            /* クラシックブルー */
+            --color-secondary: #4b6d85;
+            /* 中間アクセント */
+            --color-success: #2e7d32;
+            /* 高視認性グリーン */
+            --color-error: #c62828;
+            /* 警告レッド */
+            --bg-body: var(--color-base-200);
+            --text-body: var(--color-text-base-content);
+        }
+
+        [data-theme="dark"] {
+            --bg-steam-base: #1b2838;
+            /* メイン背景 */
+            --bg-steam-nav: #171a21;
+            /* ナビゲーション背景 */
+            --bg-steam-card: #2a475e;
+            /* カード・セクション背景 */
+
+            --color-base-100: var(--bg-steam-card);
+            --color-base-200: var(--bg-steam-base);
+            --color-base-300: #121e2c;
+            /* 暗いスリット・ボーダー */
+            --color-text-base-content: #c7d5e0;
+            /* 明るいグレー文字 */
+
+            --color-primary: #66c0f4;
+            /* Steamスカイブルー */
+            --color-secondary: #a3cf06;
+            /* Steamライムグリーン */
+            --color-success: #a3cf06;
+            /* ポジティブ・トグルカラー */
+            --color-error: #ec4b4b;
+            /* 高彩度レッド */
+            --bg-body: var(--color-base-200);
+            --text-body: var(--color-text-base-content);
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-body);
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", sans-serif;
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* 3.1 フォーカスリング個別補正 */
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary), transparent 60%) !important;
+            border-color: var(--color-primary) !important;
+        }
+
+        /* 3.2 特殊ボタン */
+        [data-theme="dark"] .btn-setup-add {
+            color: #a7f3d0 !important;
+            border-color: #a7f3d0 !important;
+        }
+
+        [data-theme="dark"] .btn-setup-add:hover {
+            background-color: #065f46 !important;
+            color: #ffffff !important;
+        }
+
+        /* 5.1 トグルボタン共通デザイン調整 */
+        .toggle {
+            --tglbg: var(--color-base-100) !important;
+            background-color: var(--color-base-300);
+            border-color: var(--color-base-300);
+        }
+
+        .toggle:checked {
+            --tglbg: var(--color-base-100) !important;
+            background-color: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+    </style>
+</head>
+
+<body x-data="app()" x-init="init()">
+
+    <!-- ナビゲーションバー -->
+    <header class="navbar shadow-lg px-4 py-3 flex-col sm:flex-row gap-4 sm:gap-2 sticky top-0 z-50"
+        style="background-color: var(--color-base-100); border-bottom: 1px solid var(--color-base-300)">
+        <div class="flex-1 w-full text-center sm:text-left">
+            <span class="text-xl font-bold tracking-wider flex items-center justify-center sm:justify-start gap-2">
+                ⚙️ 機械台帳システム
+            </span>
+        </div>
+        <div class="flex flex-col sm:items-end gap-3 w-full sm:w-auto items-center">
+            <!-- テーマ切り替え & ソースを開く -->
+            <div class="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs">☀️</span>
+                    <input type="checkbox" id="theme-controller" class="toggle toggle-sm" :checked="theme === 'dark'"
+                        @change="toggleTheme()" aria-label="テーマ切り替え" />
+                    <span class="text-xs">🌙</span>
+                </div>
+                <button class="btn btn-sm btn-outline btn-secondary" @click="openSpreadsheet()"
+                    :disabled="openingSpreadsheet">
+                    <template x-if="!openingSpreadsheet">
+                        <span>📊 ソースを開く</span>
+                    </template>
+                    <template x-if="openingSpreadsheet">
+                        <span class="loading loading-spinner loading-xs"></span>
+                    </template>
+                </button>
+            </div>
+
+            <!-- タブ切り替えボタン -->
+            <div class="join">
+                <button class="btn join-item" :class="tab === 'input' ? 'btn-primary' : 'btn-ghost'"
+                    @click="tab = 'input'">
+                    🔧 履歴入力
+                </button>
+                <button class="btn join-item" :class="tab === 'view' ? 'btn-primary' : 'btn-ghost'"
+                    @click="tab = 'view'">
+                    📋 台帳閲覧
+                </button>
+                <button class="btn join-item" :class="tab === 'machine_register' ? 'btn-primary' : 'btn-ghost'"
+                    @click="tab = 'machine_register'">
+                    🆕 新規機械登録
+                </button>
+                <button class="btn join-item" :class="tab === 'ocr' ? 'btn-primary' : 'btn-ghost'" @click="tab = 'ocr'">
+                    📷 OCR解析
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 max-w-7xl">
+
+        <!-- トースト通知エリア (画面右下に固定表示) -->
+        <template x-if="alert.show">
+            <div class="toast toast-bottom toast-end z-50 p-4">
+                <div class="alert shadow-2xl transition-all duration-300 flex items-center justify-between" :class="'alert-' + alert.type">
+                    <span x-text="alert.message" class="font-medium"></span>
+                    <button class="btn btn-xs btn-circle btn-ghost ml-2" @click="alert.show = false">✕</button>
+                </div>
+            </div>
+        </template>
+
+        <!-- ==================== 1. 台帳閲覧タブ ==================== -->
+        <div x-show="tab === 'view'" class="space-y-6" x-transition>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <!-- 左ペイン: 号機選択 & 検索 & 機械マスタ情報 -->
+                <div class="md:col-span-1 space-y-6">
+                    <!-- 号機選択 & 検索 -->
+                    <div class="card shadow p-4 space-y-4" style="background-color: var(--color-base-100)">
+                        <h3 class="text-lg font-bold border-b pb-2" style="border-color: var(--color-base-300)">検索・選択
+                        </h3>
+                        <div>
+                            <label for="filter-machine-type" class="label"><span class="label-text">機械種類</span></label>
+                            <select id="filter-machine-type" class="select select-bordered w-full"
+                                x-model="selectedMachineType" @change="onMachineTypeChange()" :disabled="isLoading">
+                                <option value="">選択してください (すべて)</option>
+                                <template x-for="type in getMachineTypes()" :key="type">
+                                    <option :value="type" x-text="type"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filter-machine-id" class="label"><span class="label-text">閲覧する号機</span></label>
+                            <select id="filter-machine-id" class="select select-bordered w-full"
+                                x-model="selectedMachineId" :disabled="isLoading">
+                                <option value="">選択してください (全件表示)</option>
+                                <template x-for="m in getFilteredMachinesForDropdown()" :key="m.machine_id">
+                                    <option :value="m.machine_id" x-text="m.machine_id"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filter-search-query" class="label"><span class="label-text">キーワード検索
+                                    (履歴)</span></label>
+                            <input id="filter-search-query" type="text" class="input input-bordered w-full"
+                                placeholder="部品名、作業内容、備考など..." x-model="searchQuery"
+                                autocomplete="off"
+                                @keydown.enter="searchPerformed = true">
+                        </div>
+                        <button type="button" class="btn btn-primary w-full mt-2" @click="searchPerformed = true">
+                            🔍 表示
+                        </button>
+                    </div>
+
+                    <!-- 機械マスタ詳細情報 -->
+                    <div class="card shadow p-4 space-y-4" style="background-color: var(--color-base-100)"
+                        x-show="selectedMachineId">
+                        <h3 class="text-lg font-bold border-b pb-2 flex justify-between items-center"
+                            style="border-color: var(--color-base-300)">
+                            <span>📋 機械マスタ情報</span>
+                            <span class="badge badge-primary text-sm font-semibold" x-text="selectedMachineId"></span>
+                        </h3>
+                        <template x-if="getSelectedMachine()">
+                            <div class="space-y-3 text-sm">
+                                <div class="grid grid-cols-3 py-1 border-b" style="border-color: var(--color-base-300)">
+                                    <span class="font-bold">機械機種</span>
+                                    <span class="col-span-2"
+                                        x-text="getSelectedMachine().machine_model || ' - '"></span>
+                                </div>
+                                <div class="grid grid-cols-3 py-1 border-b" style="border-color: var(--color-base-300)">
+                                    <span class="font-bold">製造年月日</span>
+                                    <span class="col-span-2"
+                                        x-text="getSelectedMachine().machine_mfg_date || ' - '"></span>
+                                </div>
+                                <div class="grid grid-cols-3 py-1 border-b" style="border-color: var(--color-base-300)">
+                                    <span class="font-bold">機械機番</span>
+                                    <span class="col-span-2"
+                                        x-text="getSelectedMachine().machine_serial || ' - '"></span>
+                                </div>
+                                <div class="grid grid-cols-3 py-1 border-b" style="border-color: var(--color-base-300)">
+                                    <span class="font-bold">給材機</span>
+                                    <span class="col-span-2" x-text="getSelectedMachine().feeder_name || '無'"></span>
+                                </div>
+                                <template x-if="getSelectedMachine().feeder_name">
+                                    <div class="pl-3 space-y-2 border-l-2 border-primary">
+                                        <div class="grid grid-cols-3 py-0.5">
+                                            <span class="text-xs opacity-75">形式</span>
+                                            <span class="col-span-2 text-xs"
+                                                x-text="getSelectedMachine().feeder_model || ' - '"></span>
+                                        </div>
+                                        <div class="grid grid-cols-3 py-0.5">
+                                            <span class="text-xs opacity-75">機番</span>
+                                            <span class="col-span-2 text-xs"
+                                                x-text="getSelectedMachine().feeder_serial || ' - '"></span>
+                                        </div>
+                                        <div class="grid grid-cols-3 py-0.5">
+                                            <span class="text-xs opacity-75">製造年月</span>
+                                            <span class="col-span-2 text-xs"
+                                                x-text="getSelectedMachine().feeder_mfg_date || ' - '"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div class="grid grid-cols-3 py-1 border-b" style="border-color: var(--color-base-300)">
+                                    <span class="font-bold">台帳作成日</span>
+                                    <span class="col-span-2" x-text="getSelectedMachine().created_date || ' - '"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 右ペイン: メンテナンス履歴リスト -->
+                <div class="md:col-span-3 space-y-4">
+                    <div class="card shadow p-4" style="background-color: var(--color-base-100)">
+                        <div class="flex justify-between items-center border-b pb-2 mb-4"
+                            style="border-color: var(--color-base-300)">
+                            <h3 class="text-lg font-bold">🔧 メンテナンス履歴</h3>
+                            <span class="badge badge-secondary"
+                                x-text="searchPerformed ? filteredLogs().length + ' 件' : '0 件'"></span>
+                        </div>
+
+                        <div class="space-y-4" x-show="searchPerformed">
+
+                            <!-- モバイル向け: カード型リスト (中画面未満 md:hidden) -->
+                            <div class="block md:hidden space-y-4">
+                                <template x-for="log in filteredLogs()" :key="log.log_id">
+                                    <div class="p-4 rounded-lg border space-y-2 text-sm"
+                                        style="background-color: var(--color-base-200); border-color: var(--color-base-300)">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold" x-text="log.maintenance_date || '-'"></span>
+                                            <span class="badge badge-neutral" x-text="log.machine_id"></span>
+                                        </div>
+                                        <div>
+                                            <span class="font-bold text-xs opacity-75 block">作業内容</span>
+                                            <span class="font-medium text-base text-primary"
+                                                x-text="log.work_content || '-'"></span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2 pt-1 border-t"
+                                            style="border-color: var(--color-base-300)">
+                                            <div>
+                                                <span class="font-bold text-xs opacity-75 block">交換部品名</span>
+                                                <span class="text-xs" x-text="formatPartsForDisplay(log)"></span>
+                                            </div>
+                                            <div>
+                                                <span class="font-bold text-xs opacity-75 block">担当者 / 備考</span>
+                                                <span class="text-xs block break-words"
+                                                    x-text="(log.operator_name ? '【担当: ' + log.operator_name + '】 ' : '') + (log.remarks || '-')"></span>
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between items-center mt-2 pt-2 border-t"
+                                            style="border-color: var(--color-base-300)">
+                                            <button type="button" class="btn btn-xs btn-outline btn-secondary"
+                                                @click="editLog(log)">
+                                                ✏️ 編集
+                                            </button>
+                                            <div class="text-[11px] opacity-50 text-right"
+                                                x-text="log.input_timestamp ? '登録: ' + log.input_timestamp : ''"></div>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="filteredLogs().length === 0">
+                                    <div class="text-center py-8 opacity-60 text-sm">
+                                        条件に該当するメンテナンス履歴が見つかりません。
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- PC・タブレット向け: 履歴テーブル (中画面以上 md:block) -->
+                            <div class="hidden md:block overflow-x-auto">
+                                <table class="table w-full">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid var(--color-base-300)">
+                                            <th class="w-28">日付</th>
+                                            <th class="w-24">号機</th>
+                                            <th class="w-1/3">作業内容</th>
+                                            <th class="w-1/4">交換部品名</th>
+                                            <th class="w-24">担当者</th>
+                                            <th>備考</th>
+                                            <th class="w-28 text-center">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="log in filteredLogs()" :key="log.log_id">
+                                            <tr class="hover" style="border-bottom: 1px solid var(--color-base-300)">
+                                                <td class="font-semibold" x-text="log.maintenance_date || '-'"></td>
+                                                <td>
+                                                    <span class="badge badge-neutral" x-text="log.machine_id"></span>
+                                                </td>
+                                                <td class="font-medium" x-text="log.work_content || '-'"></td>
+                                                <td x-text="formatPartsForDisplay(log)"></td>
+                                                <td class="text-xs font-semibold" x-text="log.operator_name || '-'">
+                                                </td>
+                                                <td class="text-xs max-w-xs truncate" :title="log.remarks"
+                                                    x-text="log.remarks || '-'"></td>
+                                                <td class="text-center w-28">
+                                                    <button type="button"
+                                                        class="btn btn-xs btn-outline btn-secondary whitespace-nowrap"
+                                                        @click="editLog(log)">
+                                                        ✏️ 編集
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                        <template x-if="filteredLogs().length === 0">
+                                            <tr>
+                                                <td colspan="6" class="text-center py-8 opacity-60">
+                                                    条件に該当するメンテナンス履歴が見つかりません。
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 表示ボタン未押下時のメッセージ -->
+                        <div x-show="!searchPerformed" class="text-center py-12 opacity-60 text-sm">
+                            条件を選択・入力し、「🔍 表示」ボタンを押すとメンテナンス履歴が表示されます。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 2. 履歴入力タブ ==================== -->
+        <div x-show="tab === 'input'" class="max-w-4xl mx-auto" x-transition>
+            <div class="card shadow p-4 sm:p-6 space-y-6" style="background-color: var(--color-base-100)">
+                <div class="flex justify-between items-center mb-3 border-b pb-2"
+                    style="border-color: var(--color-base-300)">
+                    <h3 class="text-xl font-bold" x-text="isEditing ? '✏️ メンテナンス履歴の編集' : '🔧 新規メンテナンス履歴 登録'">🔧
+                        新規メンテナンス履歴 登録</h3>
+                    <button type="button" x-show="isEditing" class="btn btn-sm btn-ghost"
+                        @click="cancelEdit()">キャンセル</button>
+                </div>
+
+                <form @submit.prevent="submitForm()" class="space-y-4">
+                    <!-- 機械種類選択 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="form-machine-type" class="label py-1">
+                            <span class="label-text font-bold">機械種類</span>
+                        </label>
+                        <select id="form-machine-type" class="select select-bordered w-full" x-model="form.machine_type"
+                            @change="form.machine_id = ''" :disabled="isLoading">
+                            <option value="">選択してください (すべて)</option>
+                            <template x-for="type in getMachineTypes()" :key="type">
+                                <option :value="type" x-text="type"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- 号機選択 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="form-machine-id" class="label py-1">
+                            <span class="label-text font-bold">号機 <span class="text-error">*</span></span>
+                        </label>
+                        <select id="form-machine-id" class="select select-bordered w-full" x-model="form.machine_id"
+                            required :disabled="isLoading">
+                            <option value="" disabled selected>選択してください</option>
+                            <template x-for="m in getMachinesForInputDropdown()" :key="m.machine_id">
+                                <option :value="m.machine_id" x-text="m.machine_id"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- 作業日付 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="form-maintenance-date" class="label py-1">
+                            <span class="label-text font-bold">作業日付 <span class="text-error">*</span></span>
+                        </label>
+                        <input id="form-maintenance-date" type="date" class="input input-bordered w-full"
+                            x-model="form.maintenance_date" required>
+                    </div>
+
+                    <!-- 担当者 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="form-operator-name" class="label py-1">
+                            <span class="label-text font-bold">担当者 (氏名)</span>
+                        </label>
+                        <input id="form-operator-name" type="text" list="operator-list"
+                            class="input input-bordered w-full" placeholder="担当者名を選択または直接入力"
+                            x-model="form.operator_name" autocomplete="off" :disabled="isLoading">
+                        <datalist id="operator-list">
+                            <template x-for="op in operators" :key="op.operator_id || op.operator_name">
+                                <option :value="op.operator_name"></option>
+                            </template>
+                        </datalist>
+                    </div>
+
+                    <!-- 作業内容 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="form-work-content" class="label py-1">
+                            <span class="label-text font-bold">作業内容</span>
+                        </label>
+                        <textarea id="form-work-content" class="textarea textarea-bordered !w-full !max-w-none" rows="3"
+                            placeholder="例: 主軸チャック用爪の交換、液晶・シートキー交換作業を実施" x-model="form.work_content"
+                            :disabled="isLoading"></textarea>
+                    </div>
+
+                    <!-- 交換部品名 (複数選択対応) -->
+                    <div class="w-full flex flex-col gap-1">
+                        <div class="label py-1 flex justify-between items-center">
+                            <span class="label-text font-bold">交換部品名</span>
+                            <span class="text-xs text-error font-semibold"
+                                x-show="!form.machine_id">※先に号機を選択してください</span>
+                        </div>
+                        <!-- 選択中の部品バッジ一覧 -->
+                        <div class="flex flex-wrap gap-2 mb-2 min-h-10 p-2 rounded-lg border border-dashed items-center"
+                            style="border-color: var(--color-base-300); background-color: var(--color-base-200)">
+                            <template x-for="(item, idx) in form.selected_parts" :key="idx">
+                                <div
+                                    class="badge badge-primary gap-1.5 py-3 px-3 text-xs font-semibold flex items-center">
+                                    <span x-text="item.name + (item.code ? ' (' + item.code + ')' : '')"></span>
+                                    <div
+                                        class="flex items-center gap-1 bg-base-100 text-base-content rounded px-1.5 py-0.5">
+                                        <label :for="'part-qty-' + idx"
+                                            class="text-[11px] opacity-75 font-normal">数量:</label>
+                                        <input :id="'part-qty-' + idx" type="number" min="1"
+                                            class="w-12 text-center text-xs font-bold bg-transparent outline-none border-b border-primary"
+                                            x-model.number="item.qty" autocomplete="off" @click.stop>
+                                    </div>
+                                    <button type="button"
+                                        class="btn btn-ghost btn-xs p-0 min-h-0 h-auto text-error font-bold leading-none ml-1"
+                                        @click="form.selected_parts.splice(idx, 1)">✕</button>
+                                </div>
+                            </template>
+                            <template x-if="form.selected_parts.length === 0">
+                                <span class="text-xs opacity-50 py-1 self-center">部品が選択されていません</span>
+                            </template>
+                        </div>
+
+                        <!-- モーダル起動ボタン -->
+                        <button type="button" class="btn btn-outline btn-secondary w-full" @click="openPartModal()"
+                            :disabled="isLoading">
+                            🔍 パーツリストから選択
+                        </button>
+                    </div>
+
+                    <!-- 備考 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="form-remarks" class="label py-1">
+                            <span class="label-text font-bold">備考・連絡事項(残処理事項・調整費内訳など)</span>
+                        </label>
+                        <textarea id="form-remarks" class="textarea textarea-bordered !w-full !max-w-none" rows="3"
+                            placeholder="詳細な症状や修理結果、作業者など" x-model="form.remarks"></textarea>
+                    </div>
+
+                    <!-- 送信ボタン -->
+                    <div class="pt-4 flex justify-center gap-4">
+                        <button type="button" x-show="isEditing" class="btn btn-outline w-32" @click="cancelEdit()"
+                            :disabled="formIsSubmitting">
+                            戻る
+                        </button>
+                        <button type="submit" class="btn btn-primary w-60" :disabled="formIsSubmitting">
+                            <span x-show="formIsSubmitting" class="loading loading-spinner"></span>
+                            <span x-text="isEditing ? '💾 更新する' : '💾 登録する'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ==================== 3. 新規機械登録タブ ==================== -->
+        <div x-show="tab === 'machine_register'" class="max-w-xl mx-auto" x-transition>
+            <div class="card shadow p-4 sm:p-6 space-y-6" style="background-color: var(--color-base-100)">
+                <div class="flex justify-between items-center mb-3 border-b pb-2"
+                    style="border-color: var(--color-base-300)">
+                    <h3 class="text-xl font-bold">🆕 新規機械（号機）登録</h3>
+                </div>
+
+                <form @submit.prevent="submitMachineForm()" class="space-y-4">
+                    <!-- 機械種類 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="machine-form-type" class="label py-1">
+                            <span class="label-text font-bold">機械種類 (Machine_type) <span
+                                    class="text-error">*</span></span>
+                        </label>
+                        <select id="machine-form-type" class="select select-bordered w-full"
+                            x-model="machineForm.Machine_type"
+                            @change="suggestNextMachineNo()" required :disabled="isLoading">
+                            <option value="" disabled selected>選択してください</option>
+                            <template x-for="t in getMachineTypesWithCode()" :key="t.type_code || t.machine_type">
+                                <option :value="t.type_code || t.machine_type" x-text="t.machine_type"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- 号機番号 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="machine-form-id-no" class="label py-1">
+                            <span class="label-text font-bold">号機番号 (machine_id_No) <span
+                                    class="text-error">*</span></span>
+                        </label>
+                        <input id="machine-form-id-no" type="number" class="input input-bordered w-full"
+                            placeholder="例: 143" x-model.number="machineForm.machine_id_No"
+                            @input="updateMachineId()" required autocomplete="off"
+                            :disabled="isLoading" min="1">
+                    </div>
+
+                    <!-- 機械ID (自動算出) -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="machine-form-id" class="label py-1">
+                            <span class="label-text font-bold">機械ID (machine_id)</span>
+                        </label>
+                        <input id="machine-form-id" type="text" class="input input-bordered w-full bg-base-200"
+                            x-model="machineForm.machine_id" readonly disabled>
+                    </div>
+
+                    <!-- 機械機種 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="machine-form-model" class="label py-1">
+                            <span class="label-text font-bold">機械機種 (machine_model)</span>
+                        </label>
+                        <input id="machine-form-model" type="text" class="input input-bordered w-full"
+                            placeholder="例: cincom B-12 3F5N型 または下のタグから選択" x-model="machineForm.machine_model"
+                            autocomplete="off" :disabled="isLoading">
+                        
+                        <!-- クイック選択用タグ（チップUI） -->
+                        <div class="flex flex-wrap gap-1.5 mt-1.5" x-show="getUniqueMachineModels().length > 0">
+                            <template x-for="model in getUniqueMachineModels()" :key="model">
+                                <button type="button" 
+                                    class="btn btn-xs transition-all"
+                                    :class="machineForm.machine_model === model ? 'btn-primary font-bold' : 'btn-outline btn-ghost opacity-80'"
+                                    @click="machineForm.machine_model = (machineForm.machine_model === model ? '' : model)"
+                                    x-text="model">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 製造年月日 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="machine-form-mfg-date" class="label py-1">
+                            <span class="label-text font-bold">製造年月日 (machine_mfg_date)</span>
+                        </label>
+                        <input id="machine-form-mfg-date" type="date" class="input input-bordered w-full"
+                            x-model="machineForm.machine_mfg_date" :disabled="isLoading">
+                    </div>
+
+                    <!-- 機械機番 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="machine-form-serial" class="label py-1">
+                            <span class="label-text font-bold">機械機番 (machine_serial)</span>
+                        </label>
+                        <input id="machine-form-serial" type="text" class="input input-bordered w-full"
+                            placeholder="例: Z1234" x-model="machineForm.machine_serial" autocomplete="off" :disabled="isLoading">
+                    </div>
+
+                    <!-- 備考 -->
+                    <div class="w-full flex flex-col gap-1">
+                        <label for="machine-form-remarks" class="label py-1">
+                            <span class="label-text font-bold">備考 (remarks)</span>
+                        </label>
+                        <input id="machine-form-remarks" type="text" class="input input-bordered w-full"
+                            placeholder="例: 機械の用途など" x-model="machineForm.remarks" autocomplete="off" :disabled="isLoading">
+                    </div>
+
+                    <!-- 給材機情報アコーディオン・セクション -->
+                    <div class="collapse collapse-arrow border border-base-300 bg-base-200 rounded-box">
+                        <input id="collapse-feeder-info" type="checkbox" aria-label="給材機情報" />
+                        <div class="collapse-title text-sm font-bold">
+                            ➕ 給材機情報 (任意)
+                        </div>
+                        <div class="collapse-content space-y-4">
+                            <!-- 給材機名 -->
+                            <div class="w-full flex flex-col gap-1">
+                                <label for="machine-form-feeder-name" class="label py-1">
+                                    <span class="label-text font-bold">給材機名 (feeder_name)</span>
+                                </label>
+                                <select id="machine-form-feeder-name" class="select select-bordered w-full bg-base-100"
+                                    x-model="machineForm.feeder_name" :disabled="isLoading">
+                                    <option value="">選択してください (未選択/自由指定可)</option>
+                                    <template x-for="name in getUniqueFeederNames()" :key="name">
+                                        <option :value="name" x-text="name"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <!-- 給材機形式 -->
+                            <div class="w-full flex flex-col gap-1">
+                                <label for="machine-form-feeder-model" class="label py-1">
+                                    <span class="label-text font-bold">給材機形式 (feeder_model)</span>
+                                </label>
+                                <select id="machine-form-feeder-model" class="select select-bordered w-full bg-base-100"
+                                    x-model="machineForm.feeder_model" :disabled="isLoading">
+                                    <option value="">選択してください (未選択/自由指定可)</option>
+                                    <template x-for="model in getUniqueFeederModels()" :key="model">
+                                        <option :value="model" x-text="model"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <!-- 給材機機番 -->
+                            <div class="w-full flex flex-col gap-1">
+                                <label for="machine-form-feeder-serial" class="label py-1">
+                                    <span class="label-text font-bold">給材機機番 (feeder_serial)</span>
+                                </label>
+                                <input id="machine-form-feeder-serial" type="text"
+                                    class="input input-bordered w-full bg-base-100" placeholder="例: 1234"
+                                    x-model="machineForm.feeder_serial" autocomplete="off" :disabled="isLoading">
+                            </div>
+                            <!-- 給材機製造年月日 -->
+                            <div class="w-full flex flex-col gap-1">
+                                <label for="machine-form-feeder-mfg-date" class="label py-1">
+                                    <span class="label-text font-bold">給材機製造年月日 (feeder_mfg_date)</span>
+                                </label>
+                                <input id="machine-form-feeder-mfg-date" type="date"
+                                    class="input input-bordered w-full bg-base-100"
+                                    x-model="machineForm.feeder_mfg_date" :disabled="isLoading">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 送信ボタン -->
+                    <div class="pt-4 flex justify-center">
+                        <button type="submit" class="btn btn-primary w-60" :disabled="formIsSubmitting">
+                            <span x-show="formIsSubmitting" class="loading loading-spinner"></span>
+                            <span>💾 登録する</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ==================== 4. OCR解析タブ ==================== -->
+        <div x-show="tab === 'ocr'" class="max-w-3xl mx-auto space-y-6" x-transition>
+            <div class="card shadow p-4 sm:p-6 space-y-6" style="background-color: var(--color-base-100)">
+                <div class="flex justify-between items-center mb-3 border-b pb-2"
+                    style="border-color: var(--color-base-300)">
+                    <h3 class="text-xl font-bold">📷 OCRサービスレポート解析</h3>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- ファイル選択 & D&D エリア -->
+                    <div class="border-2 border-dashed border-base-300 rounded-lg p-6 text-center cursor-pointer hover:border-primary transition"
+                        @click="$refs.fileInput.click()" @dragover.prevent="$el.classList.add('border-primary')"
+                        @dragleave.prevent="$el.classList.remove('border-primary')"
+                        @drop.prevent="$el.classList.remove('border-primary'); handleOcrFileDrop($event)">
+
+                        <input id="ocr-file-input" aria-label="サービスレポート(PDFまたは画像)" type="file" x-ref="fileInput"
+                            class="hidden" accept="application/pdf,image/*" @change="handleOcrFileSelect($event)">
+                        <div class="py-4 space-y-2">
+                            <span class="text-3xl block">📄</span>
+                            <span class="text-sm font-semibold block">サービスレポート(PDFまたは画像)を選択、またはここにドラッグ＆ドロップしてください</span>
+                            <span class="text-xs opacity-50 block">対応フォーマット: PDF, PNG, JPG (最大10MB)</span>
+                        </div>
+                    </div>
+
+                    <!-- OCR解析実行中のローディング -->
+                    <div x-show="ocrLoading" class="flex flex-col items-center justify-center py-8 gap-3">
+                        <span class="loading loading-spinner loading-lg text-primary"></span>
+                        <span class="text-sm font-semibold">OCR解析を実行中...（約5〜15秒）</span>
+                    </div>
+
+                    <!-- 解析結果表示エリア -->
+                    <template x-if="ocrResult && !ocrLoading">
+                        <div class="space-y-4 pt-4 border-t" style="border-color: var(--color-base-300)">
+                            <div class="flex justify-between items-center">
+                                <h4 class="text-md font-bold">📋 解析されたデータ</h4>
+                                <span class="badge badge-success text-xs py-2 px-3 font-bold"
+                                    x-text="'作業番号: ' + (ocrResult.workNo || '不明')"></span>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                <div class="space-y-2">
+                                    <div>
+                                        <span class="font-bold opacity-75">作業完了日:</span>
+                                        <div class="p-2 border rounded bg-base-200 font-medium"
+                                            x-text="ocrResult.completionDate || ' - '"></div>
+                                    </div>
+                                    <div>
+                                        <span class="font-bold opacity-75">機種型式:</span>
+                                        <div class="p-2 border rounded bg-base-200 font-medium"
+                                            x-text="ocrResult.modelType || ' - '"></div>
+                                    </div>
+                                    <div>
+                                        <span class="font-bold opacity-75">機番:</span>
+                                        <div class="p-2 border rounded bg-base-200 font-medium"
+                                            x-text="ocrResult.machineNo || ' - '"></div>
+                                    </div>
+                                    <div>
+                                        <span class="font-bold opacity-75">納入日:</span>
+                                        <div class="p-2 border rounded bg-base-200 font-medium"
+                                            x-text="ocrResult.deliveryDate || ' - '"></div>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div>
+                                        <span class="font-bold opacity-75">状況 (現象):</span>
+                                        <div class="p-2 border rounded bg-base-200 min-h-12 whitespace-pre-wrap"
+                                            x-text="ocrResult.status || ' - '"></div>
+                                    </div>
+                                    <div>
+                                        <span class="font-bold opacity-75">調査内容:</span>
+                                        <div class="p-2 border rounded bg-base-200 min-h-12 whitespace-pre-wrap"
+                                            x-text="ocrResult.investigation || ' - '"></div>
+                                    </div>
+                                    <div>
+                                        <span class="font-bold opacity-75">処置 (作業内容):</span>
+                                        <div class="p-2 border rounded bg-base-200 min-h-12 whitespace-pre-wrap"
+                                            x-text="ocrResult.process || ' - '"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="text-xs space-y-1">
+                                <span class="font-bold opacity-75">連絡事項 / 特記事項:</span>
+                                <div class="p-2 border rounded bg-base-200 min-h-16 whitespace-pre-wrap"
+                                    x-text="ocrResult.remarks || ' - '"></div>
+                            </div>
+
+                            <div class="text-xs space-y-2">
+                                <span class="font-bold opacity-75 block">交換部品一覧:</span>
+                                <div class="p-2 border rounded bg-base-200 space-y-2">
+                                    <template x-if="ocrResult.partsDetails && ocrResult.partsDetails.length > 0">
+                                        <div class="space-y-1.5">
+                                            <template x-for="(part, pIdx) in ocrResult.partsDetails" :key="pIdx">
+                                                <div
+                                                    class="flex items-center justify-between p-1.5 rounded bg-base-100 border border-base-300">
+                                                    <div class="flex flex-wrap items-center gap-2">
+                                                        <span
+                                                            class="font-mono bg-neutral text-neutral-content px-1.5 py-0.5 rounded text-[10px]"
+                                                            x-text="part.code || 'コードなし'"></span>
+                                                        <span class="font-semibold" x-text="part.name"></span>
+                                                        <span class="opacity-75" x-text="'数量: ' + part.qty"></span>
+                                                        <!-- 照合ステータス表示 -->
+                                                        <template x-if="isPartRegistered(part.code)">
+                                                            <span
+                                                                class="badge badge-success text-[10px] py-0 px-1.5">登録済み</span>
+                                                        </template>
+                                                        <template x-if="!isPartRegistered(part.code)">
+                                                            <span
+                                                                class="badge badge-warning text-[10px] py-0 px-1.5">未登録</span>
+                                                        </template>
+                                                    </div>
+                                                    <!-- 未登録のみボタン有効 -->
+                                                    <button type="button" class="btn btn-xs py-0 h-6 min-h-0"
+                                                        :class="isPartRegistered(part.code) ? 'btn-ghost opacity-50 cursor-not-allowed' : 'btn-outline btn-primary'"
+                                                        :disabled="isPartRegistered(part.code)"
+                                                        @click="openAddPartFromOcr(part)">
+                                                        <span
+                                                            x-text="isPartRegistered(part.code) ? '✓ 登録済み' : '➕ マスタ登録'"></span>
+                                                    </button>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                    <template x-if="!ocrResult.partsDetails || ocrResult.partsDetails.length === 0">
+                                        <span class="opacity-50" x-text="ocrResult.partsStr || ' - '"></span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- アクションボタン -->
+                            <div class="flex justify-end gap-3 pt-4">
+                                <button type="button" class="btn btn-outline btn-sm"
+                                    @click="ocrResult = null">クリア</button>
+                                <button type="button" class="btn btn-primary btn-sm" @click="copyOcrToInputForm()">
+                                    ✍️ 履歴入力フォームに転記する
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- パーツ選択モーダル -->
+    <div class="modal" :class="{ 'modal-open': showPartModal }" x-show="showPartModal" x-transition>
+        <div class="modal-box max-w-lg w-full"
+            style="background-color: var(--color-base-100); border: 1px solid var(--color-base-300)">
+            <h3 class="font-bold text-lg border-b pb-2 mb-4" style="border-color: var(--color-base-300)">🔧 交換部品の選択</h3>
+
+            <!-- 検索フィルター -->
+            <div class="form-control w-full mb-4">
+                <label for="modal-part-search" class="label py-1">
+                    <span class="label-text text-xs opacity-75">キーワードで絞り込み</span>
+                </label>
+                <input id="modal-part-search" type="text" placeholder="部品名で検索..."
+                    class="input input-bordered w-full input-sm" x-model="modalPartSearchQuery" autocomplete="off">
+            </div>
+
+            <!-- パーツリスト (縦1列のチェックボックス) -->
+            <div class="border rounded-lg p-2 max-h-60 overflow-y-auto mb-4 space-y-1"
+                style="background-color: var(--color-base-200); border-color: var(--color-base-300)">
+
+                <template x-for="pName in getFilteredPartNamesForInput(modalPartSearchQuery)" :key="pName">
+                    <label for="part-chk-dynamic" :for="'part-chk-' + pName"
+                        class="flex items-center gap-3 p-2 rounded hover:bg-neutral-focus/10 cursor-pointer text-sm">
+                        <input id="part-chk-dynamic" :id="'part-chk-' + pName" type="checkbox"
+                            class="checkbox checkbox-primary checkbox-sm" :value="pName"
+                            :checked="isTempPartSelected(pName)" @change="toggleTempPart(pName)">
+                        <span class="font-medium" x-text="pName">部品名</span>
+                    </label>
+                </template>
+
+                <template x-if="getFilteredPartNamesForInput(modalPartSearchQuery).length === 0">
+                    <div class="text-center py-6 text-xs opacity-50">該当する部品がありません。</div>
+                </template>
+            </div>
+
+            <!-- 新規パーツ登録フォーム (部品マスタへ追加) -->
+            <div class="border-t pt-3 mb-4 space-y-2" style="border-color: var(--color-base-300)">
+                <span class="label-text text-xs font-bold block">マスタにない部品を新規登録 (部品マスタに追加)</span>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <label for="new-part-id" class="label py-0.5"><span
+                                class="label-text text-[11px] opacity-75">部品ID</span></label>
+                        <input id="new-part-id" type="text" class="input input-bordered w-full input-xs"
+                            x-model="nextPartId" readonly disabled>
+                    </div>
+                    <div>
+                        <label for="new-part-name" class="label py-0.5"><span
+                                class="label-text text-[11px] opacity-75">部品名</span></label>
+                        <input id="new-part-name" type="text" placeholder="例: 近接スイッチ"
+                            class="input input-bordered w-full input-xs" x-model="newPartForm.part_name" autocomplete="off">
+                    </div>
+                    <div>
+                        <label for="new-part-number" class="label py-0.5"><span
+                                class="label-text text-[11px] opacity-75">部品番号</span></label>
+                        <input id="new-part-number" type="text" placeholder="例: E2E-X5ME1"
+                            class="input input-bordered w-full input-xs" x-model="newPartForm.part_number" autocomplete="off">
+                    </div>
+                    <div>
+                        <label for="new-part-maker" class="label py-0.5"><span
+                                class="label-text text-[11px] opacity-75">メーカー</span></label>
+                        <input id="new-part-maker" type="text" placeholder="例: オムロン"
+                            class="input input-bordered w-full input-xs" x-model="newPartForm.maker" autocomplete="off">
+                    </div>
+                    <div>
+                        <label for="new-part-machine-type" class="label py-0.5"><span
+                                class="label-text text-[11px] opacity-75">機械種類</span></label>
+                        <input id="new-part-machine-type" type="text" placeholder="例: 共通"
+                            class="input input-bordered w-full input-xs" x-model="newPartForm.machine_type" autocomplete="off">
+                    </div>
+                    <div>
+                        <label for="new-part-remarks" class="label py-0.5"><span
+                                class="label-text text-[11px] opacity-75">備考</span></label>
+                        <input id="new-part-remarks" type="text" placeholder="例: リミット検出用"
+                            class="input input-bordered w-full input-xs" x-model="newPartForm.remarks" autocomplete="off">
+                    </div>
+                </div>
+                <div class="flex justify-end pt-1">
+                    <button type="button" class="btn btn-xs btn-primary" @click="addPartMaster()"
+                        :disabled="!newPartForm.part_name">パーツマスタに登録</button>
+                </div>
+            </div>
+
+            <!-- 選択中のプレビュー -->
+            <div class="mb-4">
+                <span class="text-xs opacity-75 block mb-1">現在の一時選択:</span>
+                <div class="flex flex-wrap gap-1 min-h-6">
+                    <template x-for="(item, idx) in tempSelectedParts" :key="idx">
+                        <span class="badge badge-sm badge-outline gap-1">
+                            <span x-text="item.name"></span>
+                            <button type="button" class="text-error font-bold"
+                                @click="tempSelectedParts.splice(idx, 1)">✕</button>
+                        </span>
+                    </template>
+                    <template x-if="tempSelectedParts.length === 0">
+                        <span class="text-xs opacity-50">未選択</span>
+                    </template>
+                </div>
+            </div>
+
+            <!-- アクションボタン -->
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost btn-sm" @click="closePartModal()">キャンセル</button>
+                <button type="button" class="btn btn-primary btn-sm" @click="savePartModal()">選択を適用</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function parseDate(dStr) {
+            if (!dStr) return 0;
+            const d = new Date(dStr);
+            return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+        }
+
+        function app() {
+            return {
+                tab: 'view', // デフォルトは閲覧タブ
+                theme: 'dark', // デフォルトはダーク
+                openingSpreadsheet: false,
+                machines: [],
+                maintenanceLogs: [],
+                parts: [],
+                operators: [],
+                machineTypes: [],
+                selectedMachineId: '',
+                selectedMachineType: '',
+                searchQuery: '',
+                searchPerformed: false, // 表示ボタン押下で表示
+                isLoading: false,
+                formIsSubmitting: false,
+                isEditing: false,
+                showPartModal: false,
+                tempSelectedParts: [],
+                modalPartSearchQuery: '',
+                nextPartId: '',
+                newPartForm: {
+                    part_name: '',
+                    part_number: '',
+                    maker: '',
+                    machine_type: '',
+                    remarks: ''
+                },
+                machineForm: {
+                    machine_id: '',
+                    machine_id_No: '',
+                    Machine_type: '',
+                    machine_model: '',
+                    machine_mfg_date: '',
+                    machine_serial: '',
+                    feeder_name: '',
+                    feeder_model: '',
+                    feeder_serial: '',
+                    feeder_mfg_date: ''
+                },
+                form: {
+                    log_id: '',
+                    machine_id: '',
+                    machine_type: '',
+                    maintenance_date: new Date().toISOString().split('T')[0],
+                    operator_name: '',
+                    work_content: '',
+                    part_number: '',
+                    selected_parts: [],
+                    remarks: ''
+                },
+                alert: {
+                    show: false,
+                    type: 'success',
+                    message: ''
+                },
+                ocrResult: null,
+                ocrLoading: false,
+
+                init() {
+                    const savedTheme = localStorage.getItem('theme') || 'dark';
+                    this.theme = savedTheme;
+                    document.documentElement.dataset.theme = savedTheme;
+                    this.loadData();
+                },
+
+                toggleTheme() {
+                    this.theme = this.theme === 'dark' ? 'light' : 'dark';
+                    document.documentElement.dataset.theme = this.theme;
+                    localStorage.setItem('theme', this.theme);
+                },
+
+                openSpreadsheet() {
+                    this.openingSpreadsheet = true;
+                    google.script.run
+                        .withSuccessHandler(url => {
+                            this.openingSpreadsheet = false;
+                            if (url) {
+                                window.open(url, '_blank');
+                            }
+                        })
+                        .withFailureHandler(err => {
+                            this.openingSpreadsheet = false;
+                            this.showAlert('error', '❌ スプレッドシートURLの取得に失敗しました: ' + err.message);
+                        })
+                        .getSpreadsheetUrl();
+                },
+
+                loadData() {
+                    this.isLoading = true;
+                    let count = 0;
+                    const checkDone = () => {
+                        count++;
+                        if (count >= 5) {
+                            this.isLoading = false;
+                        }
+                    };
+
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.machines = res || [];
+                            checkDone();
+                        })
+                        .withFailureHandler(err => {
+                            this.showAlert('error', '❌ 機械マスタの読み込み失敗: ' + err.message);
+                            checkDone();
+                        })
+                        .getMachineMasterData();
+
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.maintenanceLogs = res || [];
+                            checkDone();
+                        })
+                        .withFailureHandler(err => {
+                            this.showAlert('error', '❌ メンテナンス履歴の読み込み失敗: ' + err.message);
+                            checkDone();
+                        })
+                        .getMaintenanceLogData();
+
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.parts = res || [];
+                            checkDone();
+                        })
+                        .withFailureHandler(err => {
+                            this.showAlert('error', '❌ 部品マスタの読み込み失敗: ' + err.message);
+                            checkDone();
+                        })
+                        .getPartMasterData();
+
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.operators = res || [];
+                            checkDone();
+                        })
+                        .withFailureHandler(err => {
+                            this.showAlert('error', '❌ 担当者マスタの読み込み失敗: ' + err.message);
+                            checkDone();
+                        })
+                        .getOperatorMasterData();
+
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.machineTypes = res || [];
+                            checkDone();
+                        })
+                        .withFailureHandler(err => {
+                            this.showAlert('error', '❌ 機械種類マスタの読み込み失敗: ' + err.message);
+                            checkDone();
+                        })
+                        .getMachineTypeMasterData();
+                },
+
+                loadPartData() {
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            this.parts = res || [];
+                        })
+                        .getPartMasterData();
+                },
+
+                getMachineTypes() {
+                    if (this.machineTypes && this.machineTypes.length > 0) {
+                        return this.machineTypes.map(t => t.machine_type).filter(Boolean);
+                    }
+                    const types = this.machines.map(m => m.machine_type || m.Machine_type).filter(Boolean);
+                    return [...new Set(types)].sort();
+                },
+
+                getMachineTypesWithCode() {
+                    if (this.machineTypes && this.machineTypes.length > 0) {
+                        return this.machineTypes.filter(t => t.machine_type);
+                    }
+                    const types = this.getMachineTypes();
+                    return types.map(t => ({ machine_type: t, type_code: t }));
+                },
+
+                getFilteredMachinesForDropdown() {
+                    if (!this.selectedMachineType) return this.machines;
+                    const typeObj = (this.machineTypes || []).find(t => t.machine_type === this.selectedMachineType || t.type_code === this.selectedMachineType);
+                    const targetTypes = [this.selectedMachineType];
+                    if (typeObj) {
+                        if (typeObj.machine_type) targetTypes.push(typeObj.machine_type);
+                        if (typeObj.type_code) targetTypes.push(typeObj.type_code);
+                    }
+                    return this.machines.filter(m => {
+                        const mType = m.machine_type || m.Machine_type;
+                        return targetTypes.includes(mType);
+                    });
+                },
+
+                onMachineTypeChange() {
+                    const validMachines = this.getFilteredMachinesForDropdown();
+                    if (this.selectedMachineId && !validMachines.some(m => String(m.machine_id).trim() === String(this.selectedMachineId).trim())) {
+                        this.selectedMachineId = '';
+                    }
+                },
+
+                getMachinesForInputDropdown() {
+                    if (!this.form.machine_type) return this.machines;
+                    const typeObj = (this.machineTypes || []).find(t => t.machine_type === this.form.machine_type || t.type_code === this.form.machine_type);
+                    const targetTypes = [this.form.machine_type];
+                    if (typeObj) {
+                        if (typeObj.machine_type) targetTypes.push(typeObj.machine_type);
+                        if (typeObj.type_code) targetTypes.push(typeObj.type_code);
+                    }
+                    return this.machines.filter(m => {
+                        const mType = m.machine_type || m.Machine_type;
+                        return targetTypes.includes(mType);
+                    });
+                },
+
+                getSelectedMachine() {
+                    if (!this.selectedMachineId) return null;
+                    return this.machines.find(m => String(m.machine_id).trim() === String(this.selectedMachineId).trim()) || null;
+                },
+
+                matchMachineType(logMachineId, selectedType) {
+                    if (!selectedType) return true;
+                    const mInfo = this.machines.find(m => String(m.machine_id || '').trim() === String(logMachineId || '').trim());
+                    const mType = mInfo ? (mInfo.machine_type || mInfo.Machine_type || '') : '';
+                    const typeObj = (this.machineTypes || []).find(t => t.machine_type === selectedType || t.type_code === selectedType);
+                    const targetTypes = [selectedType];
+                    if (typeObj) {
+                        if (typeObj.machine_type) targetTypes.push(typeObj.machine_type);
+                        if (typeObj.type_code) targetTypes.push(typeObj.type_code);
+                    }
+                    return targetTypes.includes(mType);
+                },
+
+                filteredLogs() {
+                    return this.maintenanceLogs.filter(log => {
+                        if (this.selectedMachineId && String(log.machine_id || '').trim() !== String(this.selectedMachineId || '').trim()) {
+                            return false;
+                        }
+                        if (this.selectedMachineType && !this.matchMachineType(log.machine_id, this.selectedMachineType)) {
+                            return false;
+                        }
+                        if (this.searchQuery) {
+                            const q = this.searchQuery.toLowerCase();
+                            const partsStr = this.formatPartsForDisplay(log).toLowerCase();
+                            const target = `${log.machine_id || ''} ${log.work_content || ''} ${log.remarks || ''} ${partsStr}`.toLowerCase();
+                            if (!target.includes(q)) return false;
+                        }
+                        return true;
+                    }).sort((a, b) => parseDate(b.maintenance_date) - parseDate(a.maintenance_date));
+                },
+
+                getFilteredPartNamesForInput(query) {
+                    let filtered = this.parts;
+                    let mType = this.form.machine_type || '';
+                    if (this.form.machine_id) {
+                        const mInfo = this.machines.find(m => String(m.machine_id).trim() === String(this.form.machine_id).trim());
+                        if (mInfo) {
+                            mType = mInfo.machine_type || mInfo.Machine_type || mType;
+                        }
+                    }
+                    if (mType) {
+                        const typeObj = (this.machineTypes || []).find(t => t.machine_type === mType || t.type_code === mType);
+                        const targetTypes = [mType, '共通', ''];
+                        if (typeObj) {
+                            if (typeObj.machine_type) targetTypes.push(typeObj.machine_type);
+                            if (typeObj.type_code) targetTypes.push(typeObj.type_code);
+                        }
+                        filtered = filtered.filter(p => !p.machine_type || targetTypes.includes(p.machine_type));
+                    }
+                    if (query) {
+                        const q = query.toLowerCase();
+                        filtered = filtered.filter(p =>
+                            (p.part_name && p.part_name.toLowerCase().includes(q)) ||
+                            (p.part_number && p.part_number.toLowerCase().includes(q))
+                        );
+                    }
+                    return filtered.map(p => p.part_name).filter(Boolean);
+                },
+
+                isPartRegistered(code) {
+                    if (!code) return false;
+                    return this.parts.some(p => p.part_number && String(p.part_number).trim() === String(code).trim());
+                },
+
+                // OCRファイル選択ハンドラー
+                handleOcrFileSelect(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    this.processOcrFile(file);
+                },
+
+                // OCRドラッグ＆ドロップハンドラー
+                handleOcrFileDrop(event) {
+                    const file = event.dataTransfer.files[0];
+                    if (!file) return;
+                    this.processOcrFile(file);
+                },
+
+                // OCRファイルのアップロード・解析
+                processOcrFile(file) {
+                    const reader = new FileReader();
+                    this.ocrLoading = true;
+                    this.ocrResult = null;
+                    reader.onload = (e) => {
+                        const base64Data = e.target.result;
+                        google.script.run
+                            .withSuccessHandler(response => {
+                                this.ocrLoading = false;
+                                if (response.success) {
+                                    this.ocrResult = response.data;
+                                    this.showAlert('success', '✅ OCR解析が完了しました。');
+                                } else {
+                                    this.showAlert('error', '❌ OCR解析エラー: ' + response.message);
+                                }
+                            })
+                            .withFailureHandler(err => {
+                                this.ocrLoading = false;
+                                this.showAlert('error', '❌ OCR通信エラー: ' + err.message);
+                            })
+                            .runOcrOnBlob(base64Data, file.name);
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                // OCR結果を履歴入力フォームへ転記
+                copyOcrToInputForm() {
+                    if (!this.ocrResult) return;
+
+                    // 最も適合する号機(machine_id)を特定
+                    let targetMachine = null;
+                    if (this.ocrResult.machineNo) {
+                        // Z1234 等の部分一致
+                        targetMachine = this.machines.find(m =>
+                            (m.machine_serial && m.machine_serial.includes(this.ocrResult.machineNo)) ||
+                            (m.machine_id && m.machine_id.includes(this.ocrResult.machineNo))
+                        );
+                    }
+
+                    this.tab = 'input';
+                    this.form.log_id = '';
+                    if (targetMachine) {
+                        this.form.machine_id = targetMachine.machine_id;
+                        this.form.machine_type = targetMachine.machine_type || targetMachine.Machine_type || '';
+                    } else {
+                        this.form.machine_id = '';
+                        this.form.machine_type = '';
+                    }
+
+                    // 日付の調整 (YYYY-MM-DD)
+                    let formattedDate = new Date().toISOString().split('T')[0];
+                    if (this.ocrResult.completionDate) {
+                        // YYYY年MM月DD日のパース
+                        const dateMatch = this.ocrResult.completionDate.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+                        if (dateMatch) {
+                            const y = dateMatch[1];
+                            const m = String(dateMatch[2]).padStart(2, '0');
+                            const d = String(dateMatch[3]).padStart(2, '0');
+                            formattedDate = `${y}-${m}-${d}`;
+                        }
+                    }
+                    this.form.maintenance_date = formattedDate;
+
+                    // 本文情報
+                    let workStr = "";
+                    if (this.ocrResult.status) workStr += `【状況】\n${this.ocrResult.status}\n`;
+                    if (this.ocrResult.investigation) workStr += `【調査内容】\n${this.ocrResult.investigation}\n`;
+                    if (this.ocrResult.process) workStr += `【処置】\n${this.ocrResult.process}`;
+                    this.form.work_content = workStr.trim();
+
+                    this.form.remarks = this.ocrResult.remarks || '';
+
+                    // 部品の追加
+                    this.form.selected_parts = [];
+                    if (this.ocrResult.partsDetails && this.ocrResult.partsDetails.length > 0) {
+                        this.ocrResult.partsDetails.forEach(p => {
+                            if (p.name) {
+                                const cleanName = p.name.trim();
+                                const code = p.code ? p.code.trim() : '';
+                                const qty = p.qty ? Number(p.qty) || 1 : 1;
+                                if (cleanName && !this.form.selected_parts.some(sp => sp.name === cleanName)) {
+                                    this.form.selected_parts.push({
+                                        name: cleanName,
+                                        code: code,
+                                        qty: qty
+                                    });
+                                }
+                            }
+                        });
+                    }
+
+                    this.showAlert('success', '✅ OCR解析データを入力フォームに転記しました。号機や日付等をご確認の上、登録を行ってください。');
+                },
+
+                // 表示用の交換部品フォーマット文字列を生成
+                formatPartsForDisplay(log) {
+                    if (!log) return '-';
+                    const numStr = log.part_number ? String(log.part_number).trim() : '';
+                    const qtyStr = log.part_quantity ? String(log.part_quantity).trim() : '';
+
+                    if (!numStr) return '-';
+
+                    const numbers = numStr.split('|').map(s => s.trim());
+                    const quantities = qtyStr ? qtyStr.split('|').map(s => s.trim()) : [];
+
+                    let results = [];
+                    numbers.forEach((code, idx) => {
+                        if (!code) return;
+                        // PartMasterから部品名を取得
+                        const matchedPart = this.parts.find(p => p.part_number && String(p.part_number).trim() === code);
+                        const name = matchedPart ? matchedPart.part_name : '';
+                        const qty = quantities[idx] || '1';
+
+                        let label = name ? `${name} (${code})` : code;
+                        if (qty && qty !== '1') {
+                            label += ` x ${qty}`;
+                        } else if (qty === '1') {
+                            label += ` x 1`;
+                        }
+                        results.push(label);
+                    });
+
+                    return results.length > 0 ? results.join(', ') : '-';
+                },
+
+                // 編集モードに入る
+                editLog(log) {
+                    this.isEditing = true;
+                    this.form.log_id = log.log_id || '';
+                    this.form.machine_id = log.machine_id || '';
+
+                    // 機械種類を自動選択
+                    const mInfo = this.machines.find(m => String(m.machine_id).trim() === String(log.machine_id).trim());
+                    this.form.machine_type = mInfo ? (mInfo.machine_type || mInfo.Machine_type || '') : '';
+
+                    // 日付フォーマットの調整 (YYYY-MM-DD)
+                    let formattedDate = '';
+                    if (log.maintenance_date) {
+                        const dateObj = new Date(log.maintenance_date);
+                        if (!Number.isNaN(dateObj.getTime())) {
+                            const y = dateObj.getFullYear();
+                            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                            const d = String(dateObj.getDate()).padStart(2, '0');
+                            formattedDate = `${y}-${m}-${d}`;
+                        }
+                    }
+                    this.form.maintenance_date = formattedDate;
+                    this.form.operator_name = log.operator_name || '';
+                    this.form.work_content = log.work_content || '';
+                    this.form.remarks = log.remarks || '';
+
+                    // 部品と数量の復元 (パイプ区切り |)
+                    this.form.selected_parts = [];
+                    if (log.part_number) {
+                        const codes = String(log.part_number).split('|').map(s => s.trim());
+                        const qtys = log.part_quantity ? String(log.part_quantity).split('|').map(s => s.trim()) : [];
+                        codes.forEach((code, idx) => {
+                            if (!code) return;
+                            const matchedPart = this.parts.find(p => p.part_number && String(p.part_number).trim() === code);
+                            const name = matchedPart ? matchedPart.part_name : code;
+                            const qty = qtys[idx] ? Number(qtys[idx]) || 1 : 1;
+                            this.form.selected_parts.push({
+                                name: name,
+                                code: code,
+                                qty: qty
+                            });
+                        });
+                    }
+
+                    // 入力タブに切り替え
+                    this.tab = 'input';
+                },
+
+                // 編集をキャンセルしてリセット
+                cancelEdit() {
+                    this.isEditing = false;
+                    this.resetForm();
+                },
+
+                // フォームのリセット
+                resetForm() {
+                    this.form = {
+                        log_id: '',
+                        machine_id: '',
+                        machine_type: '',
+                        maintenance_date: new Date().toISOString().split('T')[0],
+                        operator_name: '',
+                        work_content: '',
+                        part_number: '',
+                        part_quantity: '',
+                        selected_parts: [],
+                        remarks: ''
+                    };
+                },
+
+                openAddPartFromOcr(part) {
+                    this.newPartForm = {
+                        part_name: part.name || '',
+                        part_number: part.code || '',
+                        maker: 'シチズンマシナリー',
+                        machine_type: (this.ocrResult && this.ocrResult.modelType) ? this.ocrResult.modelType : '共通',
+                        remarks: 'OCR自動抽出登録'
+                    };
+                    this.generateNextPartId();
+                    this.tempSelectedParts = [...this.form.selected_parts];
+                    this.showPartModal = true;
+                },
+
+                openPartModal() {
+                    this.tempSelectedParts = JSON.parse(JSON.stringify(this.form.selected_parts || []));
+                    this.modalPartSearchQuery = '';
+                    this.newPartForm = {
+                        part_name: '',
+                        part_number: '',
+                        maker: '',
+                        machine_type: '',
+                        remarks: ''
+                    };
+                    if (this.form.machine_id) {
+                        const selectedMachine = this.machines.find(m => m.machine_id === this.form.machine_id);
+                        if (selectedMachine) {
+                            this.newPartForm.machine_type = selectedMachine.machine_type || selectedMachine.Machine_type || "";
+                        }
+                    }
+                    this.generateNextPartId();
+                    this.showPartModal = true;
+                },
+                closePartModal() {
+                    this.showPartModal = false;
+                },
+                savePartModal() {
+                    this.form.selected_parts = JSON.parse(JSON.stringify(this.tempSelectedParts || []));
+                    this.showPartModal = false;
+                },
+                toggleTempPart(pName) {
+                    const idx = this.tempSelectedParts.findIndex(item => item.name === pName);
+                    if (idx === -1) {
+                        const matchedPart = this.parts.find(p => p.part_name === pName);
+                        const code = matchedPart ? (matchedPart.part_number || '') : '';
+                        this.tempSelectedParts.push({
+                            name: pName,
+                            code: code,
+                            qty: 1
+                        });
+                    } else {
+                        this.tempSelectedParts.splice(idx, 1);
+                    }
+                },
+                isTempPartSelected(pName) {
+                    return this.tempSelectedParts.some(item => item.name === pName);
+                },
+                generateNextPartId() {
+                    if (this.parts.length === 0) {
+                        this.nextPartId = 'P0001';
+                        return;
+                    }
+                    let maxNum = 0;
+                    this.parts.forEach(p => {
+                        const id = p.part_id || "";
+                        const match = id.match(/^P(\d+)$/i);
+                        if (match) {
+                            const num = Number.parseInt(match[1], 10);
+                            if (num > maxNum) {
+                                maxNum = num;
+                            }
+                        }
+                    });
+                    this.nextPartId = 'P' + String(maxNum + 1).padStart(4, '0');
+                },
+                addPartMaster() {
+                    if (!this.newPartForm.part_name.trim()) return;
+                    this.isLoading = true;
+                    google.script.run
+                        .withSuccessHandler(response => {
+                            this.isLoading = false;
+                            if (response.success) {
+                                this.showAlert('success', '✅ 部品マスタに新規パーツを登録しました。');
+                                const pName = this.newPartForm.part_name.trim();
+                                const pCode = this.newPartForm.part_number.trim();
+                                if (!this.tempSelectedParts.some(item => item.name === pName)) {
+                                    this.tempSelectedParts.push({
+                                        name: pName,
+                                        code: pCode,
+                                        qty: 1
+                                    });
+                                }
+                                this.loadPartData();
+                                this.newPartForm = {
+                                    part_name: '',
+                                    part_number: '',
+                                    maker: '',
+                                    machine_type: '',
+                                    remarks: ''
+                                };
+                                if (this.form.machine_id) {
+                                    const selectedMachine = this.machines.find(m => m.machine_id === this.form.machine_id);
+                                    if (selectedMachine) {
+                                        this.newPartForm.machine_type = selectedMachine.machine_type || selectedMachine.Machine_type || "";
+                                    }
+                                }
+                                setTimeout(() => { this.generateNextPartId(); }, 500);
+                            } else {
+                                this.showAlert('error', '❌ 部品登録エラー: ' + response.message);
+                            }
+                        })
+                        .withFailureHandler(err => {
+                            this.isLoading = false;
+                            this.showAlert('error', '❌ 通信エラーが発生しました: ' + err.message);
+                        })
+                        .addPartMasterData(this.newPartForm);
+                },
+
+                submitForm() {
+                    this.formIsSubmitting = true;
+                    // 送信前に選択された部品のpart_numberとpart_quantityをパイプ区切りで作成
+                    // part_numberにはPartMasterのpart_number（なければname）を設定
+                    const codes = [];
+                    const qtys = [];
+                    this.form.selected_parts.forEach(item => {
+                        let c = item.code || item.name || '';
+                        codes.push(c);
+                        qtys.push(item.qty || 1);
+                    });
+
+                    this.form.part_number = codes.join('|');
+                    this.form.part_quantity = qtys.join('|');
+                    const apiName = this.isEditing ? 'updateMaintenanceLog' : 'addMaintenanceLog';
+
+                    google.script.run
+                        .withSuccessHandler(response => {
+                            this.formIsSubmitting = false;
+                            if (response.success) {
+                                this.showAlert('success', this.isEditing ? '✅ メンテナンス記録が正常に更新されました。' : '✅ メンテナンス記録が正常に保存されました。');
+
+                                if (this.isEditing) {
+                                    this.isEditing = false;
+                                    this.resetForm();
+                                    this.tab = 'view'; // 編集後は履歴閲覧タブに戻る
+                                } else {
+                                    // 新規時は部分リセットのみ
+                                    this.form.work_content = '';
+                                    this.form.part_number = '';
+                                    this.form.part_quantity = '';
+                                    this.form.selected_parts = [];
+                                    this.form.remarks = '';
+                                }
+                                // データを再読み込みして閲覧画面に反映
+                                this.loadData();
+                            } else {
+                                this.showAlert('error', '❌ 保存エラー: ' + response.message);
+                            }
+                        })
+                        .withFailureHandler(err => {
+                            this.formIsSubmitting = false;
+                            this.showAlert('error', '❌ 通信エラーが発生しました: ' + err.message);
+                        })
+                    [apiName](this.form);
+                },
+
+                getUniqueMachineModels() {
+                    let filtered = this.machines;
+                    if (this.machineForm.Machine_type) {
+                        filtered = filtered.filter(m => (m.machine_type || m.Machine_type) === this.machineForm.Machine_type);
+                    }
+                    const models = filtered.map(m => m.machine_model).filter(Boolean);
+                    return [...new Set(models)].sort();
+                },
+
+                getUniqueFeederNames() {
+                    const names = (this.machines || []).map(m => m.feeder_name).filter(Boolean);
+                    return [...new Set(names)].sort();
+                },
+
+                getUniqueFeederModels() {
+                    let filtered = this.machines || [];
+                    if (this.machineForm.feeder_name) {
+                        filtered = filtered.filter(m => m.feeder_name === this.machineForm.feeder_name);
+                    }
+                    const models = filtered.map(m => m.feeder_model).filter(Boolean);
+                    return [...new Set(models)].sort();
+                },
+
+                suggestNextMachineNo() {
+                    const type = this.machineForm.Machine_type;
+                    if (!type) {
+                        this.machineForm.machine_id_No = '';
+                        this.updateMachineId();
+                        return;
+                    }
+                    const usedNos = new Set(this.machines
+                        .filter(m => (m.machine_type || m.Machine_type) === type)
+                        .map(m => Number.parseInt(m.machine_id_No, 10))
+                        .filter(n => !Number.isNaN(n) && n > 0));
+
+                    let nextNo = 1;
+                    while (usedNos.has(nextNo)) {
+                        nextNo++;
+                    }
+                    this.machineForm.machine_id_No = nextNo;
+                    this.updateMachineId();
+                },
+                updateMachineId() {
+                    const type = this.machineForm.Machine_type || "";
+                    const num = this.machineForm.machine_id_No;
+                    if (!type || num === undefined || num === null || num === "") {
+                        this.machineForm.machine_id = "";
+                        return;
+                    }
+                    const padNum = String(num).padStart(3, '0');
+                    let prefix = type;
+                    const found = (this.machineTypes || []).find(t => t.type_code === type || t.machine_type === type);
+                    if (found && found.type_code) {
+                        prefix = found.type_code.toUpperCase();
+                    }
+                    this.machineForm.machine_id = prefix + padNum;
+                },
+                submitMachineForm() {
+                    if (!confirm("この内容で登録しますか？")) {
+                        return;
+                    }
+                    this.formIsSubmitting = true;
+                    google.script.run
+                        .withSuccessHandler(response => {
+                            this.formIsSubmitting = false;
+                            if (response.success) {
+                                this.showAlert('success', '✅ 新規機械が正常に登録されました。');
+                                this.resetMachineForm();
+                                this.loadData();
+                            } else {
+                                this.showAlert('error', '❌ 登録エラー: ' + response.message);
+                            }
+                        })
+                        .withFailureHandler(err => {
+                            this.formIsSubmitting = false;
+                            this.showAlert('error', '❌ 通信エラーが発生しました: ' + err.message);
+                        })
+                        .addMachineMasterData(this.machineForm);
+                },
+                resetMachineForm() {
+                    this.machineForm = {
+                        machine_id: '',
+                        machine_id_No: '',
+                        Machine_type: '',
+                        machine_model: '',
+                        machine_mfg_date: '',
+                        machine_serial: '',
+                        feeder_name: '',
+                        feeder_model: '',
+                        feeder_serial: '',
+                        feeder_mfg_date: '',
+                        remarks: ''
+                    };
+                },
+
+                showAlert(type, message) {
+                    this.alert.show = true;
+                    this.alert.type = type === 'error' ? 'error' : 'success';
+                    this.alert.message = message;
+
+                    if (type === 'success') {
+                        setTimeout(() => {
+                            this.alert.show = false;
+                        }, 5000);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

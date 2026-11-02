@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>システム構成 & 処理フロー視覚化 | Machinery-Register-customform</title>
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-secondary: #111827;
+      --bg-card: #1f2937;
+      --bg-card-hover: #283548;
+      --border-color: #374151;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-blue: #38bdf8;
+      --accent-purple: #a855f7;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-cyan: #06b6d4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.5;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .badge-archify {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+    }
+
+    h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .header-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-left: 0.5rem;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 0.35rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.825rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      color: white;
+      background: var(--accent-blue);
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+    }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .content-viewport {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    /* Inspector Side Panel */
+    .inspector-panel {
+      width: 380px;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 50;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.5);
+    }
+
+    .inspector-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0,0,0,0.2);
+    }
+
+    .inspector-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .inspector-content {
+      padding: 1.25rem;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .inspector-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.85rem;
+    }
+
+    .inspector-label {
+      font-size: 0.725rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+      letter-spacing: 0.05em;
+    }
+
+    .inspector-value {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .code-block {
+      background: #000;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.775rem;
+      color: #38bdf8;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    /* Tab Panes */
+    .view-pane {
+      display: none;
+      height: 100%;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .view-pane.active {
+      display: flex;
+    }
+
+    /* Diagram Styles */
+    .diagram-container {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .diagram-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .diagram-title {
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .legend-group {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* SVG Interactive Nodes */
+    svg text {
+      user-select: none;
+      font-family: inherit;
+    }
+
+    .interactive-node {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .interactive-node:hover rect,
+    .interactive-node:hover polygon {
+      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8));
+      stroke: var(--accent-blue) !important;
+      stroke-width: 2.5px !important;
+    }
+
+    .interactive-node.selected rect {
+      stroke: #f59e0b !important;
+      stroke-width: 3px !important;
+      filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.8));
+    }
+
+    /* Flow Animated Lines */
+    .flow-line {
+      stroke-dasharray: 6;
+      animation: dash 1.5s linear infinite;
+    }
+
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -12;
+      }
+    }
+
+    /* Cards & Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.25rem;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-blue);
+    }
+
+    .feature-card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .feature-card p {
+      font-size: 0.825rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .badge-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .badge-blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
+    .badge-purple { background: rgba(168, 85, 247, 0.15); color: #a855f7; border-color: rgba(168, 85, 247, 0.3); }
+    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
+    .badge-rose { background: rgba(244, 63, 94, 0.15); color: #f43f5e; border-color: rgba(244, 63, 94, 0.3); }
+
+    /* Tables */
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.825rem;
+      background: var(--bg-card);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .spec-table th, .spec-table td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .spec-table th {
+      background: rgba(0, 0, 0, 0.3);
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.725rem;
+      letter-spacing: 0.05em;
+    }
+
+    .spec-table tr:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .spec-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Simulation Control */
+    .sim-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 1rem;
+    }
+
+    .sim-btn {
+      background: var(--accent-emerald);
+      color: #042f2e;
+      border: none;
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.775rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s;
+    }
+
+    .sim-btn:hover {
+      filter: brightness(1.15);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    }
+
+    .sim-step-text {
+      font-size: 0.8rem;
+      color: var(--text-main);
+      font-family: monospace;
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <span class="badge-archify">Archify 2.0</span>
+      <h1>大平テック 機械台帳・メンテナンス管理システム</h1>
+      <span class="header-subtitle">/ Machinery-Register-customform 仕様視覚化</span>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('system')">
+        <span>🌐</span> 全体システム構成
+      </button>
+      <button class="tab-btn" onclick="switchTab('ui-state')">
+        <span>🧩</span> UI階層 & 状態管理
+      </button>
+      <button class="tab-btn" onclick="switchTab('sequence')">
+        <span>⚡</span> 処理シーケンス
+      </button>
+      <button class="tab-btn" onclick="switchTab('datamodel')">
+        <span>🗄️</span> データモデル
+      </button>
+      <button class="tab-btn" onclick="switchTab('pipeline')">
+        <span>🛠️</span> 開発 & ビルドパイプライン
+      </button>
+      <button class="tab-btn" onclick="switchTab('gap')">
+        <span>⚠️</span> 課題・改善計画
+      </button>
+    </nav>
+  </header>
+
+  <!-- Main Viewport -->
+  <div class="main-container">
+    
+    <div class="content-viewport">
+
+      <!-- ================= TAB 1: 全体システム構成 ================= -->
+      <div id="pane-system" class="view-pane active">
+        <div class="diagram-container">
+          <div class="diagram-toolbar">
+            <div class="diagram-title">
+              <span>🏗️</span> アーキテクチャ階層 & サービス境界図
+            </div>
+            <div class="legend-group">
+              <div class="legend-item"><span class="legend-dot" style="background:#38bdf8;"></span> クライアント (Browser)</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#a855f7;"></span> GAS バックエンド (V8)</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> Google Drive / Docs (OCR)</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> Google スプレッドシート</div>
+            </div>
+          </div>
+
+          <svg viewBox="0 0 1000 640" width="100%" height="560" style="background:#0d1322; border-radius:8px;">
+            <defs>
+              <linearGradient id="clientGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25"/>
+                <stop offset="1%" stop-color="#0369a1" stop-opacity="0.05"/>
+              </linearGradient>
+              <linearGradient id="gasGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#7e22ce" stop-opacity="0.25"/>
+                <stop offset="1%" stop-color="#581c87" stop-opacity="0.05"/>
+              </linearGradient>
+              <linearGradient id="driveGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#059669" stop-opacity="0.25"/>
+                <stop offset="1%" stop-color="#065f46" stop-opacity="0.05"/>
+              </linearGradient>
+              <linearGradient id="sheetGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#d97706" stop-opacity="0.25"/>
+                <stop offset="1%" stop-color="#b45309" stop-opacity="0.05"/>
+              </linearGradient>
+
+              <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 8 5 L 0 9 z" fill="#38bdf8"/>
+              </marker>
+              <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 8 5 L 0 9 z" fill="#a855f7"/>
+              </marker>
+              <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 8 5 L 0 9 z" fill="#10b981"/>
+              </marker>
+              <marker id="arrow-amber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 8 5 L 0 9 z" fill="#f59e0b"/>
+              </marker>
+            </defs>
+
+            <!-- 1. クライアントゾーン -->
+            <rect x="30" y="30" width="280" height="580" rx="10" fill="url(#clientGrad)" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="4 2"/>
+            <text x="50" y="60" fill="#38bdf8" font-size="14" font-weight="bold">💻 Frontend (index.html)</text>
+            <text x="50" y="80" fill="#64748b" font-size="11">Tailwind CSS + DaisyUI + Alpine.js</text>
+
+            <!-- Client Components -->
+            <g class="interactive-node" onclick="inspectNode('c_view')">
+              <rect x="50" y="105" width="240" height="60" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+              <text x="65" y="130" fill="#f8fafc" font-size="12" font-weight="bold">1. 履歴閲覧タブ (tab: view)</text>
+              <text x="65" y="150" fill="#94a3b8" font-size="10">検索絞込・号機詳細カード・一覧表示</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('c_input')">
+              <rect x="50" y="180" width="240" height="60" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+              <text x="65" y="205" fill="#f8fafc" font-size="12" font-weight="bold">2. 履歴入力タブ (tab: input)</text>
+              <text x="65" y="225" fill="#94a3b8" font-size="10">新規登録 / 既存編集(UUID)・パーツ選択</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('c_machine')">
+              <rect x="50" y="255" width="240" height="60" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+              <text x="65" y="280" fill="#f8fafc" font-size="12" font-weight="bold">3. 機械登録タブ (tab: register)</text>
+              <text x="65" y="300" fill="#94a3b8" font-size="10">空き連番サジェスト・給材機情報入力</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('c_ocr')">
+              <rect x="50" y="330" width="240" height="60" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+              <text x="65" y="355" fill="#f8fafc" font-size="12" font-weight="bold">4. OCR解析タブ (tab: ocr)</text>
+              <text x="65" y="375" fill="#94a3b8" font-size="10">PDF/画像 D&D・解析結果プレビュー・転記</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('c_modal')">
+              <rect x="50" y="405" width="240" height="50" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+              <text x="65" y="428" fill="#f8fafc" font-size="11" font-weight="bold">部品選択/新規登録モーダル</text>
+              <text x="65" y="444" fill="#94a3b8" font-size="9.5">パーツ検索・複数選定・P0001自動採番</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('c_state')">
+              <rect x="50" y="470" width="240" height="55" rx="6" fill="#0f172a" stroke="#0284c7" stroke-width="1"/>
+              <text x="65" y="493" fill="#38bdf8" font-size="11" font-weight="bold">Alpine.js App State Store</text>
+              <text x="65" y="510" fill="#94a3b8" font-size="9.5">machines, logs, parts, operators, form</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('c_bridge')">
+              <rect x="50" y="540" width="240" height="50" rx="6" fill="#0c4a6e" stroke="#0284c7" stroke-width="1.5"/>
+              <text x="65" y="563" fill="#e0f2fe" font-size="11" font-weight="bold">google.script.run (Client RPC)</text>
+              <text x="65" y="579" fill="#7dd3fc" font-size="9.5">withSuccessHandler / withFailureHandler</text>
+            </g>
+
+            <!-- 2. GAS バックエンドゾーン -->
+            <rect x="360" y="30" width="280" height="580" rx="10" fill="url(#gasGrad)" stroke="#7e22ce" stroke-width="1.5" stroke-dasharray="4 2"/>
+            <text x="380" y="60" fill="#c084fc" font-size="14" font-weight="bold">⚡ GAS Backend (TypeScript / V8)</text>
+            <text x="380" y="80" fill="#64748b" font-size="11">TypeScript + clasp + esbuild bundle</text>
+
+            <g class="interactive-node" onclick="inspectNode('g_lock')">
+              <rect x="380" y="105" width="240" height="55" rx="6" fill="#3b0764" stroke="#a855f7" stroke-width="1.5"/>
+              <text x="395" y="128" fill="#f3e8ff" font-size="11" font-weight="bold">🛡️ LockService (排他制御ガード)</text>
+              <text x="395" y="146" fill="#d8b4fe" font-size="9.5">lock.waitLock(30000) / releaseLock()</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('g_maint')">
+              <rect x="380" y="175" width="240" height="60" rx="6" fill="#1e1b4b" stroke="#4338ca" stroke-width="1.5"/>
+              <text x="395" y="200" fill="#f8fafc" font-size="12" font-weight="bold">Maintenance Log Service</text>
+              <text x="395" y="218" fill="#a5b4fc" font-size="9.5">addMaintenanceLog / updateMaintenanceLog</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('g_master')">
+              <rect x="380" y="250" width="240" height="65" rx="6" fill="#1e1b4b" stroke="#4338ca" stroke-width="1.5"/>
+              <text x="395" y="273" fill="#f8fafc" font-size="12" font-weight="bold">Master Data Service</text>
+              <text x="395" y="291" fill="#a5b4fc" font-size="9.5">Machine / Part / Operator / MachineType</text>
+              <text x="395" y="306" fill="#818cf8" font-size="9">get*MasterData / add*MasterData</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('g_ocr')">
+              <rect x="380" y="330" width="240" height="65" rx="6" fill="#1e1b4b" stroke="#4338ca" stroke-width="1.5"/>
+              <text x="395" y="353" fill="#f8fafc" font-size="12" font-weight="bold">OCR Processing Service</text>
+              <text x="395" y="371" fill="#a5b4fc" font-size="9.5">runOcrOnBlob / parsePdfViaOcr</text>
+              <text x="395" y="386" fill="#818cf8" font-size="9">正規表現セクション抽出・補正マップ</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('g_norm')">
+              <rect x="380" y="410" width="240" height="55" rx="6" fill="#1e1b4b" stroke="#334155" stroke-width="1.5"/>
+              <text x="395" y="433" fill="#f8fafc" font-size="11" font-weight="bold">Text Normalizer & Parser</text>
+              <text x="395" y="451" fill="#94a3b8" font-size="9.5">convertHankakuToZenkaku / parseCsvRows</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('g_doget')">
+              <rect x="380" y="480" width="240" height="50" rx="6" fill="#1e1b4b" stroke="#334155" stroke-width="1.5"/>
+              <text x="395" y="503" fill="#f8fafc" font-size="11" font-weight="bold">doGet(e) / HtmlService</text>
+              <text x="395" y="519" fill="#94a3b8" font-size="9.5">createTemplateFromFile('index')</text>
+            </g>
+
+            <!-- 3. Google Cloud / Drive API & OCR Engine -->
+            <rect x="690" y="30" width="280" height="260" rx="10" fill="url(#driveGrad)" stroke="#059669" stroke-width="1.5" stroke-dasharray="4 2"/>
+            <text x="710" y="60" fill="#34d399" font-size="14" font-weight="bold">👁️ Drive & Docs OCR Engine</text>
+            <text x="710" y="80" fill="#64748b" font-size="11">Google Cloud Platform Services</text>
+
+            <g class="interactive-node" onclick="inspectNode('d_drive')">
+              <rect x="710" y="105" width="240" height="50" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+              <text x="725" y="128" fill="#ecfdf5" font-size="11" font-weight="bold">DriveApp / Drive API (v2/v3)</text>
+              <text x="725" y="145" fill="#a7f3d0" font-size="9.5">temp_ocr_* 一時PDF作成 & 自動ゴミ箱移動</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('d_docs')">
+              <rect x="710" y="170" width="240" height="50" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+              <text x="725" y="193" fill="#ecfdf5" font-size="11" font-weight="bold">DocumentApp OCR Engine</text>
+              <text x="725" y="210" fill="#a7f3d0" font-size="9.5">ocrLanguage: 'ja' によるテキスト自動抽出</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('d_save')">
+              <rect x="710" y="230" width="240" height="45" rx="6" fill="#064e3b" stroke="#047857" stroke-width="1"/>
+              <text x="725" y="253" fill="#ecfdf5" font-size="11" font-weight="bold">saveOcrToSheet (報告書ログ保管)</text>
+              <text x="725" y="267" fill="#6ee7b7" font-size="9">シチズンマシナリー作業報告書シートへ追記</text>
+            </g>
+
+            <!-- 4. Google スプレッドシート (データベース) -->
+            <rect x="690" y="320" width="280" height="290" rx="10" fill="url(#sheetGrad)" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4 2"/>
+            <text x="710" y="350" fill="#fbbf24" font-size="14" font-weight="bold">📊 Google Spreadsheet (Database)</text>
+            <text x="710" y="370" fill="#64748b" font-size="11">SpreadsheetApp Data Store (6 Sheets)</text>
+
+            <g class="interactive-node" onclick="inspectNode('s_log')">
+              <rect x="710" y="390" width="240" height="40" rx="5" fill="#451a03" stroke="#f59e0b" stroke-width="1.5"/>
+              <text x="725" y="415" fill="#fef3c7" font-size="11" font-weight="bold">MaintenanceLog (主キー: log_id UUID)</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('s_machine')">
+              <rect x="710" y="438" width="240" height="40" rx="5" fill="#451a03" stroke="#f59e0b" stroke-width="1"/>
+              <text x="725" y="463" fill="#fef3c7" font-size="11" font-weight="bold">MachineMaster (号機情報・給材機)</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('s_part')">
+              <rect x="710" y="486" width="240" height="40" rx="5" fill="#451a03" stroke="#f59e0b" stroke-width="1"/>
+              <text x="725" y="511" fill="#fef3c7" font-size="11" font-weight="bold">PartMaster (部品名・型番・自動連番P0001)</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('s_other')">
+              <rect x="710" y="534" width="240" height="55" rx="5" fill="#451a03" stroke="#b45309" stroke-width="1"/>
+              <text x="725" y="555" fill="#fde68a" font-size="10" font-weight="bold">OperatorMaster (担当者 OP001)</text>
+              <text x="725" y="570" fill="#fde68a" font-size="10" font-weight="bold">MachineTypeMaster / シチズンマシナリー報告書</text>
+            </g>
+
+            <!-- Flow Connectors -->
+            <!-- Client -> GAS -->
+            <path d="M 290 565 L 380 205" fill="none" stroke="#38bdf8" stroke-width="1.5" marker-end="url(#arrow-blue)" class="flow-line"/>
+            <path d="M 290 355 L 380 355" fill="none" stroke="#38bdf8" stroke-width="1.5" marker-end="url(#arrow-blue)" class="flow-line"/>
+
+            <!-- GAS -> Drive/Docs -->
+            <path d="M 620 365 L 710 135" fill="none" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrow-green)" class="flow-line"/>
+            <path d="M 710 195 L 620 380" fill="none" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3 3"/>
+
+            <!-- GAS -> Sheet -->
+            <path d="M 620 205 L 710 410" fill="none" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrow-amber)" class="flow-line"/>
+            <path d="M 620 280 L 710 460" fill="none" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrow-amber)" class="flow-line"/>
+          </svg>
+        </div>
+
+        <div class="grid-3">
+          <div class="feature-card">
+            <h3><span>🛡️</span> 完全排他制御 (LockService)</h3>
+            <p>同時アクセス衝突によるスプレッドシートデータ破損を防止。全書込処理に30秒タイムアウトの厳格なスクリプト排他ロックを適用。</p>
+            <div class="badge-list">
+              <span class="badge badge-purple">LockService</span>
+              <span class="badge badge-purple">30s Guard</span>
+              <span class="badge badge-purple">Release in finally</span>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <h3><span>🤖</span> ハイブリッドOCRパーサー</h3>
+            <p>PDF/画像をGoogle Docs経由でテキスト化し、正規表現パターンマッチと既知の作業番号補正マップにより高精度に部品と作業内容を抽出。</p>
+            <div class="badge-list">
+              <span class="badge badge-green">Drive OCR</span>
+              <span class="badge badge-green">Doc API</span>
+              <span class="badge badge-green">Regex Extraction</span>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <h3><span>⚡</span> クライアントリアクティブ同期</h3>
+            <p>Alpine.js による完全なシングルページアプリケーション。マスタと連動した動的ドロップダウンやインクリメンタル検索を実現。</p>
+            <div class="badge-list">
+              <span class="badge badge-blue">Alpine.js v3</span>
+              <span class="badge badge-blue">Tailwind / DaisyUI</span>
+              <span class="badge badge-blue">Dark / Light Mode</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= TAB 2: UI階層 & 状態管理 ================= -->
+      <div id="pane-ui-state" class="view-pane">
+        <div class="diagram-container">
+          <div class="diagram-toolbar">
+            <div class="diagram-title">
+              <span>🧩</span> フロントエンド UI コンポーネント階層 & Alpine.js リアクティブ状態
+            </div>
+          </div>
+
+          <svg viewBox="0 0 1000 500" width="100%" height="450" style="background:#0d1322; border-radius:8px;">
+            <!-- UI Header -->
+            <rect x="40" y="30" width="920" height="50" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="60" y="60" fill="#f8fafc" font-size="13" font-weight="bold">Navbar (大平テック 機械メンテナンス管理システム)</text>
+            <rect x="620" y="42" width="120" height="26" rx="4" fill="#0284c7"/>
+            <text x="635" y="59" fill="#fff" font-size="10" font-weight="bold">スプレッドシートを開く</text>
+            <rect x="750" y="42" width="90" height="26" rx="4" fill="#334155"/>
+            <text x="765" y="59" fill="#fff" font-size="10">🌙 テーマ切替</text>
+            <rect x="850" y="42" width="90" height="26" rx="4" fill="#475569"/>
+            <text x="865" y="59" fill="#fff" font-size="10">タブ切替 (4種)</text>
+
+            <!-- 4 Major Tabs -->
+            <!-- View Tab -->
+            <g class="interactive-node" onclick="inspectNode('c_view')">
+              <rect x="40" y="110" width="215" height="260" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+              <rect x="40" y="110" width="215" height="32" rx="8" fill="#0369a1"/>
+              <text x="55" y="132" fill="#fff" font-size="12" font-weight="bold">1. tab: 'view' (閲覧)</text>
+              <text x="55" y="165" fill="#94a3b8" font-size="10">• 機械種類フィルタ</text>
+              <text x="55" y="185" fill="#94a3b8" font-size="10">• 号機 (machine_id) 絞込</text>
+              <text x="55" y="205" fill="#94a3b8" font-size="10">• キーワード検索入力</text>
+              <text x="55" y="225" fill="#94a3b8" font-size="10">• 号機詳細スペックカード</text>
+              <text x="55" y="245" fill="#94a3b8" font-size="10">• 履歴テーブル (PC)</text>
+              <text x="55" y="265" fill="#94a3b8" font-size="10">• 履歴カード (Mobile)</text>
+              <text x="55" y="285" fill="#38bdf8" font-size="10">⚙️ 編集トリガー -> inputへ</text>
+              <rect x="55" y="315" width="185" height="35" rx="4" fill="#0f172a"/>
+              <text x="65" y="337" fill="#38bdf8" font-size="9.5">filteredLogs() 降順ソート</text>
+            </g>
+
+            <!-- Input Tab -->
+            <g class="interactive-node" onclick="inspectNode('c_input')">
+              <rect x="275" y="110" width="215" height="260" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+              <rect x="275" y="110" width="215" height="32" rx="8" fill="#4338ca"/>
+              <text x="290" y="132" fill="#fff" font-size="12" font-weight="bold">2. tab: 'input' (入力/編集)</text>
+              <text x="290" y="165" fill="#94a3b8" font-size="10">• isEditing フラグ判定</text>
+              <text x="290" y="185" fill="#94a3b8" font-size="10">• 機械種別 & 号機セレクト</text>
+              <text x="290" y="205" fill="#94a3b8" font-size="10">• 作業日付ピッカー</text>
+              <text x="290" y="225" fill="#94a3b8" font-size="10">• 担当者 datalist 補完</text>
+              <text x="290" y="245" fill="#94a3b8" font-size="10">• 作業内容 textarea</text>
+              <text x="290" y="265" fill="#94a3b8" font-size="10">• 交換部品バッジ & 数量</text>
+              <text x="290" y="285" fill="#a855f7" font-size="10">🔍 モーダル呼出ボタン</text>
+              <rect x="290" y="315" width="185" height="35" rx="4" fill="#0f172a"/>
+              <text x="300" y="337" fill="#a855f7" font-size="9.5">submitForm() [add/update]</text>
+            </g>
+
+            <!-- Register Tab -->
+            <g class="interactive-node" onclick="inspectNode('c_machine')">
+              <rect x="510" y="110" width="215" height="260" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+              <rect x="510" y="110" width="215" height="32" rx="8" fill="#b45309"/>
+              <text x="525" y="132" fill="#fff" font-size="12" font-weight="bold">3. tab: 'register' (機械登録)</text>
+              <text x="525" y="165" fill="#94a3b8" font-size="10">• 機械種別 (NC, WR...)</text>
+              <text x="525" y="185" fill="#f59e0b" font-size="10">⚡ suggestNextMachineNo()</text>
+              <text x="525" y="205" fill="#94a3b8" font-size="10">• 機械ID (NC001等自動生成)</text>
+              <text x="525" y="225" fill="#94a3b8" font-size="10">• 機種チップクイック選択</text>
+              <text x="525" y="245" fill="#94a3b8" font-size="10">• 製造年月日 / 機番</text>
+              <text x="525" y="265" fill="#94a3b8" font-size="10">• 給材機アコーディオン</text>
+              <text x="525" y="285" fill="#94a3b8" font-size="10">• 登録確認 confirm()</text>
+              <rect x="525" y="315" width="185" height="35" rx="4" fill="#0f172a"/>
+              <text x="535" y="337" fill="#f59e0b" font-size="9.5">submitMachineForm()</text>
+            </g>
+
+            <!-- OCR Tab -->
+            <g class="interactive-node" onclick="inspectNode('c_ocr')">
+              <rect x="745" y="110" width="215" height="260" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+              <rect x="745" y="110" width="215" height="32" rx="8" fill="#047857"/>
+              <text x="760" y="132" fill="#fff" font-size="12" font-weight="bold">4. tab: 'ocr' (レポート解析)</text>
+              <text x="760" y="165" fill="#94a3b8" font-size="10">• ファイル選択 & D&D エリア</text>
+              <text x="760" y="185" fill="#94a3b8" font-size="10">• ocrLoading スピナー</text>
+              <text x="760" y="205" fill="#94a3b8" font-size="10">• メタ情報 (作業No, 完了日)</text>
+              <text x="760" y="225" fill="#94a3b8" font-size="10">• セクション (状況/原因/処置)</text>
+              <text x="760" y="245" fill="#94a3b8" font-size="10">• 部品一覧 (登録状況照合)</text>
+              <text x="760" y="265" fill="#10b981" font-size="10">➕ 未登録部品マスタ登録</text>
+              <text x="760" y="285" fill="#38bdf8" font-size="10">✍️ 履歴入力へ自動転記</text>
+              <rect x="760" y="315" width="185" height="35" rx="4" fill="#0f172a"/>
+              <text x="770" y="337" fill="#10b981" font-size="9.5">copyOcrToInputForm()</text>
+            </g>
+
+            <!-- Sub Components: Modal & Toast -->
+            <g class="interactive-node" onclick="inspectNode('c_modal')">
+              <rect x="150" y="400" width="340" height="70" rx="8" fill="#0f172a" stroke="#a855f7" stroke-width="1.5"/>
+              <text x="170" y="425" fill="#c084fc" font-size="12" font-weight="bold">🔧 showPartModal (部品モーダル)</text>
+              <text x="170" y="445" fill="#94a3b8" font-size="10">インクリメンタル検索・チェックボックス複数選択</text>
+              <text x="170" y="460" fill="#a855f7" font-size="9.5">新規パーツ登録 (P0001連番自動生成)</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('c_toast')">
+              <rect x="530" y="400" width="340" height="70" rx="8" fill="#0f172a" stroke="#10b981" stroke-width="1.5"/>
+              <text x="550" y="425" fill="#6ee7b7" font-size="12" font-weight="bold">🔔 alert (トースト通知)</text>
+              <text x="550" y="445" fill="#94a3b8" font-size="10">success (緑・5秒後自動消去) / error (赤・固定)</text>
+              <text x="550" y="460" fill="#6ee7b7" font-size="9.5">ユーザー操作フィードバック</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- ================= TAB 3: 処理シーケンス ================= -->
+      <div id="pane-sequence" class="view-pane">
+        <div class="sim-bar">
+          <button class="sim-btn" onclick="startSim()">▶ フロー再生</button>
+          <div id="sim-text" class="sim-step-text">待機中: 「フロー再生」を押すと、OCR解析から履歴登録へのデータ推移をステップ実行します。</div>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title" style="margin-bottom:1rem;">
+            <span>⚡</span> 主要ビジネスロジックのシーケンスフロー
+          </div>
+
+          <svg viewBox="0 0 1000 520" width="100%" height="480" style="background:#0d1322; border-radius:8px;">
+            <!-- Lifelines -->
+            <line x1="120" y1="50" x2="120" y2="480" stroke="#334155" stroke-dasharray="4"/>
+            <text x="120" y="40" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">User / Client</text>
+
+            <line x1="360" y1="50" x2="360" y2="480" stroke="#334155" stroke-dasharray="4"/>
+            <text x="360" y="40" fill="#a855f7" font-size="12" font-weight="bold" text-anchor="middle">GAS Webapp.gs</text>
+
+            <line x1="600" y1="50" x2="600" y2="480" stroke="#334155" stroke-dasharray="4"/>
+            <text x="600" y="40" fill="#10b981" font-size="12" font-weight="bold" text-anchor="middle">Drive & Docs OCR</text>
+
+            <line x1="840" y1="50" x2="840" y2="480" stroke="#334155" stroke-dasharray="4"/>
+            <text x="840" y="40" fill="#f59e0b" font-size="12" font-weight="bold" text-anchor="middle">Spreadsheet DB</text>
+
+            <!-- Sequence 1: Load Data -->
+            <g id="seq-step-1">
+              <rect x="110" y="70" width="20" height="40" fill="#0284c7" rx="3"/>
+              <path d="M 130 80 L 350 80" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-blue)"/>
+              <text x="240" y="75" fill="#93c5fd" font-size="10" text-anchor="middle">1. loadData() [マスタ・履歴5種並行取得]</text>
+              <rect x="350" y="80" width="20" height="30" fill="#7e22ce" rx="3"/>
+              <path d="M 370 95 L 830 95" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow-amber)"/>
+              <text x="600" y="90" fill="#fde68a" font-size="10" text-anchor="middle">getValues() 全件フェッチ</text>
+            </g>
+
+            <!-- Sequence 2: OCR Upload & Parse -->
+            <g id="seq-step-2">
+              <path d="M 130 140 L 350 140" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-blue)"/>
+              <text x="240" y="135" fill="#93c5fd" font-size="10" text-anchor="middle">2. runOcrOnBlob(base64, filename)</text>
+              <rect x="350" y="140" width="20" height="90" fill="#7e22ce" rx="3"/>
+              
+              <path d="M 370 155 L 590 155" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-green)"/>
+              <text x="480" y="150" fill="#6ee7b7" font-size="10" text-anchor="middle">一時PDF作成 & OCR Doc変換 (ja)</text>
+              <rect x="590" y="155" width="20" height="50" fill="#047857" rx="3"/>
+
+              <path d="M 590 190 L 370 190" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3"/>
+              <text x="480" y="185" fill="#6ee7b7" font-size="10" text-anchor="middle">テキスト抽出 & setTrashed(true)</text>
+
+              <path d="M 370 215 L 830 215" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow-amber)"/>
+              <text x="600" y="210" fill="#fde68a" font-size="10" text-anchor="middle">saveOcrToSheet() 報告書ログ保管</text>
+
+              <path d="M 350 230 L 130 230" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3"/>
+              <text x="240" y="225" fill="#93c5fd" font-size="10" text-anchor="middle">OcrResult返却 (作業No, 状況, 処置, 部品)</text>
+            </g>
+
+            <!-- Sequence 3: Transfer to Input -->
+            <g id="seq-step-3">
+              <rect x="110" y="250" width="20" height="50" fill="#0284c7" rx="3"/>
+              <path d="M 130 265 C 180 265, 180 285, 130 285" stroke="#38bdf8" stroke-width="1.5" fill="none"/>
+              <text x="200" y="275" fill="#93c5fd" font-size="10">3. copyOcrToInputForm() [号機特定・本文結合]</text>
+            </g>
+
+            <!-- Sequence 4: Submit & Concurrency Lock -->
+            <g id="seq-step-4">
+              <path d="M 130 320 L 350 320" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-blue)"/>
+              <text x="240" y="315" fill="#93c5fd" font-size="10" text-anchor="middle">4. submitForm() [新規登録 / 編集更新]</text>
+              <rect x="350" y="320" width="20" height="120" fill="#7e22ce" rx="3"/>
+
+              <rect x="380" y="330" width="160" height="30" rx="4" fill="#3b0764" stroke="#a855f7"/>
+              <text x="460" y="350" fill="#f3e8ff" font-size="10" text-anchor="middle">LockService.waitLock(30s)</text>
+
+              <path d="M 370 380 L 830 380" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow-amber)"/>
+              <text x="600" y="375" fill="#fde68a" font-size="10" text-anchor="middle">addOperatorMasterData() [未登録者のみ自動採番]</text>
+
+              <path d="M 370 410 L 830 410" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow-amber)"/>
+              <text x="600" y="405" fill="#fde68a" font-size="10" text-anchor="middle">appendRow() [UUID採番] / setValues() [更新]</text>
+
+              <rect x="380" y="425" width="160" height="25" rx="4" fill="#3b0764" stroke="#a855f7"/>
+              <text x="460" y="442" fill="#f3e8ff" font-size="9.5" text-anchor="middle">lock.releaseLock()</text>
+
+              <path d="M 350 450 L 130 450" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3"/>
+              <text x="240" y="445" fill="#93c5fd" font-size="10" text-anchor="middle">success: true -> トースト表示 & 再同期</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- ================= TAB 4: データモデル ================= -->
+      <div id="pane-datamodel" class="view-pane">
+        <div class="grid-2">
+          <div class="diagram-container">
+            <div class="diagram-title">
+              <span>📊</span> スプレッドシート テーブル定義一覧 (全6シート)
+            </div>
+            <table class="spec-table" style="margin-top:1rem;">
+              <thead>
+                <tr>
+                  <th>シート名</th>
+                  <th>主キー</th>
+                  <th>主要フィールド</th>
+                  <th>排他制御</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr onclick="inspectNode('s_log')">
+                  <td><strong style="color:#f59e0b;">MaintenanceLog</strong></td>
+                  <td><code>log_id</code> (UUID)</td>
+                  <td>machine_id, maintenance_date, work_content, part_number, part_quantity, operator_name</td>
+                  <td><span class="badge badge-purple">30秒ロック</span></td>
+                </tr>
+                <tr onclick="inspectNode('s_machine')">
+                  <td><strong style="color:#f59e0b;">MachineMaster</strong></td>
+                  <td><code>machine_id</code></td>
+                  <td>machine_id_No, machine_type, machine_model, machine_serial, feeder_name, feeder_model</td>
+                  <td><span class="badge badge-purple">30秒ロック</span></td>
+                </tr>
+                <tr onclick="inspectNode('s_part')">
+                  <td><strong style="color:#f59e0b;">PartMaster</strong></td>
+                  <td><code>part_id</code> (P0001)</td>
+                  <td>part_name, part_number, maker, machine_type, remarks</td>
+                  <td><span class="badge badge-purple">30秒ロック</span></td>
+                </tr>
+                <tr onclick="inspectNode('s_other')">
+                  <td><strong style="color:#f59e0b;">OperatorMaster</strong></td>
+                  <td><code>operator_id</code> (OP001)</td>
+                  <td>operator_name, created_date</td>
+                  <td><span class="badge badge-purple">30秒ロック</span></td>
+                </tr>
+                <tr onclick="inspectNode('s_other')">
+                  <td><strong style="color:#f59e0b;">MachineTypeMaster</strong></td>
+                  <td><code>type_code</code></td>
+                  <td>machine_type, type_code (NC, WR, HR, MZ, AK, AI, AC)</td>
+                  <td>読取専用</td>
+                </tr>
+                <tr onclick="inspectNode('d_save')">
+                  <td><strong style="color:#f59e0b;">シチズンマシナリー作業報告書</strong></td>
+                  <td><code>作業番号</code></td>
+                  <td>作業完了日, 機種型式, 機番, 状況, 原因, 処置, 交換部品1〜10, OCR実行日</td>
+                  <td>追記のみ</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="diagram-container">
+            <div class="diagram-title">
+              <span>🔗</span> テーブル間リレーションシップ (ER図)
+            </div>
+            <svg viewBox="0 0 450 320" width="100%" height="280" style="background:#0d1322; border-radius:8px; margin-top:1rem;">
+              <!-- Entities -->
+              <g class="interactive-node" onclick="inspectNode('s_machine')">
+                <rect x="20" y="30" width="180" height="90" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+                <rect x="20" y="30" width="180" height="24" rx="6" fill="#b45309"/>
+                <text x="30" y="47" fill="#fff" font-size="11" font-weight="bold">MachineMaster</text>
+                <text x="30" y="70" fill="#fde68a" font-size="10">🔑 machine_id (PK)</text>
+                <text x="30" y="88" fill="#94a3b8" font-size="9.5">machine_type, machine_model</text>
+                <text x="30" y="104" fill="#94a3b8" font-size="9.5">machine_serial, feeder_info</text>
+              </g>
+
+              <g class="interactive-node" onclick="inspectNode('s_log')">
+                <rect x="240" y="100" width="190" height="120" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+                <rect x="240" y="100" width="190" height="24" rx="6" fill="#b45309"/>
+                <text x="250" y="117" fill="#fff" font-size="11" font-weight="bold">MaintenanceLog</text>
+                <text x="250" y="140" fill="#fde68a" font-size="10">🔑 log_id (PK, UUID)</text>
+                <text x="250" y="158" fill="#38bdf8" font-size="9.5">🔗 machine_id (FK)</text>
+                <text x="250" y="174" fill="#94a3b8" font-size="9.5">maintenance_date, work_content</text>
+                <text x="250" y="190" fill="#a855f7" font-size="9.5">part_number (pipe |)</text>
+                <text x="250" y="206" fill="#94a3b8" font-size="9.5">operator_name, input_timestamp</text>
+              </g>
+
+              <g class="interactive-node" onclick="inspectNode('s_part')">
+                <rect x="20" y="180" width="180" height="90" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+                <rect x="20" y="180" width="180" height="24" rx="6" fill="#b45309"/>
+                <text x="30" y="197" fill="#fff" font-size="11" font-weight="bold">PartMaster</text>
+                <text x="30" y="220" fill="#fde68a" font-size="10">🔑 part_id (PK, P0001)</text>
+                <text x="30" y="238" fill="#a855f7" font-size="9.5">part_number (コード)</text>
+                <text x="30" y="254" fill="#94a3b8" font-size="9.5">part_name, maker, machine_type</text>
+              </g>
+
+              <!-- Lines -->
+              <path d="M 200 75 L 240 130" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3 3"/>
+              <text x="210" y="95" fill="#fde68a" font-size="9">1:N</text>
+
+              <path d="M 200 225 L 240 190" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="3 3"/>
+              <text x="210" y="215" fill="#d8b4fe" font-size="9">N:M (|)</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= TAB: 開発 & ビルドパイプライン ================= -->
+      <div id="pane-pipeline" class="view-pane">
+        <div class="diagram-container">
+          <div class="diagram-toolbar">
+            <div class="diagram-title">
+              <span>🛠️</span> Google Apps Script (V8) + TypeScript (clasp) 開発・検証・ビルドパイプライン
+            </div>
+            <div class="legend-group">
+              <div class="legend-item"><span class="legend-dot" style="background:#38bdf8;"></span> TypeScript Source</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#a855f7;"></span> 決定論的検証 (Type/Test)</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> バンドル / 生成物 (dist)</div>
+              <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> clasp & GASデプロイ</div>
+            </div>
+          </div>
+
+          <svg viewBox="0 0 1000 480" width="100%" height="450" style="background:#0d1322; border-radius:8px;">
+            <defs>
+              <marker id="pipe-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 8 5 L 0 9 z" fill="#38bdf8"/>
+              </marker>
+            </defs>
+
+            <!-- Column 1: Source (TypeScript) -->
+            <rect x="30" y="30" width="210" height="420" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="50" y="60" fill="#38bdf8" font-size="13" font-weight="bold">📁 TypeScript Source (src/)</text>
+            <text x="50" y="78" fill="#94a3b8" font-size="10">厳格モード・完全型注釈</text>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_types')">
+              <rect x="45" y="95" width="180" height="60" rx="5" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+              <text x="55" y="118" fill="#f8fafc" font-size="11" font-weight="bold">types/index.ts</text>
+              <text x="55" y="135" fill="#94a3b8" font-size="9.5">マスタ/履歴/OCR/API型定義</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_services')">
+              <rect x="45" y="170" width="180" height="65" rx="5" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+              <text x="55" y="193" fill="#f8fafc" font-size="11" font-weight="bold">services/</text>
+              <text x="55" y="210" fill="#94a3b8" font-size="9.5">MasterService (採番・マスタ)</text>
+              <text x="55" y="225" fill="#94a3b8" font-size="9.5">MaintenanceService (排他制御)</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_parsers')">
+              <rect x="45" y="250" width="180" height="65" rx="5" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+              <text x="55" y="273" fill="#f8fafc" font-size="11" font-weight="bold">parsers/ & utils/</text>
+              <text x="55" y="290" fill="#94a3b8" font-size="9.5">OcrParser (正規表現/補正)</text>
+              <text x="55" y="305" fill="#94a3b8" font-size="9.5">TextUtils (全角半角/CSV)</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_entry')">
+              <rect x="45" y="330" width="180" height="60" rx="5" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+              <text x="55" y="353" fill="#f8fafc" font-size="11" font-weight="bold">index.ts (GAS公開)</text>
+              <text x="55" y="370" fill="#94a3b8" font-size="9.5">doGet(e), RPC APIエントリ</text>
+            </g>
+
+            <!-- Arrow 1 -> 2 -->
+            <path d="M 240 240 L 275 240" stroke="#38bdf8" stroke-width="2" marker-end="url(#pipe-arrow)"/>
+
+            <!-- Column 2: 決定論的検証ループ -->
+            <rect x="280" y="30" width="210" height="420" rx="8" fill="#1e1b4b" stroke="#a855f7" stroke-width="1.5"/>
+            <text x="300" y="60" fill="#c084fc" font-size="13" font-weight="bold">⚡ 決定論的検証ループ</text>
+            <text x="300" y="78" fill="#94a3b8" font-size="10">機械的ゲートウェイ</text>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_typecheck')">
+              <rect x="295" y="105" width="180" height="85" rx="5" fill="#2e1065" stroke="#7e22ce" stroke-width="1"/>
+              <text x="305" y="130" fill="#f3e8ff" font-size="11" font-weight="bold">1. 静的型検査 (tsc)</text>
+              <text x="305" y="150" fill="#a78bfa" font-size="10">npm run type-check</text>
+              <text x="305" y="170" fill="#cbd5e1" font-size="9">tsc --noEmit 型不整合0件</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_vitest')">
+              <rect x="295" y="210" width="180" height="95" rx="5" fill="#2e1065" stroke="#7e22ce" stroke-width="1"/>
+              <text x="305" y="235" fill="#f3e8ff" font-size="11" font-weight="bold">2. 単体テスト (Vitest)</text>
+              <text x="305" y="255" fill="#a78bfa" font-size="10">npm test</text>
+              <text x="305" y="275" fill="#cbd5e1" font-size="9">採番・不変則・OCR・正規化</text>
+              <text x="305" y="290" fill="#34d399" font-size="9">契約テスト 100% Pass</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_emptycheck')">
+              <rect x="295" y="325" width="180" height="75" rx="5" fill="#2e1065" stroke="#7e22ce" stroke-width="1"/>
+              <text x="305" y="350" fill="#f3e8ff" font-size="11" font-weight="bold">3. 空ファイル検証</text>
+              <text x="305" y="370" fill="#cbd5e1" font-size="9">0バイト成果物の混入阻止</text>
+              <text x="305" y="385" fill="#34d399" font-size="9">決定論的ビルド前提条件</text>
+            </g>
+
+            <!-- Arrow 2 -> 3 -->
+            <path d="M 490 240 L 525 240" stroke="#a855f7" stroke-width="2" marker-end="url(#pipe-arrow)"/>
+
+            <!-- Column 3: バンドル / dist/ -->
+            <rect x="530" y="30" width="200" height="420" rx="8" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+            <text x="550" y="60" fill="#34d399" font-size="13" font-weight="bold">📦 ビルド & 生成物 (dist/)</text>
+            <text x="550" y="78" fill="#94a3b8" font-size="10">npm run build (esbuild)</text>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_bundle')">
+              <rect x="545" y="105" width="170" height="85" rx="5" fill="#022c22" stroke="#059669" stroke-width="1"/>
+              <text x="555" y="130" fill="#ecfdf5" font-size="11" font-weight="bold">dist/Code.js</text>
+              <text x="555" y="150" fill="#6ee7b7" font-size="9.5">GAS V8向けIIFEバンドル</text>
+              <text x="555" y="168" fill="#94a3b8" font-size="9">グローバル公開関数登録</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_assets')">
+              <rect x="545" y="210" width="170" height="75" rx="5" fill="#022c22" stroke="#059669" stroke-width="1"/>
+              <text x="555" y="235" fill="#ecfdf5" font-size="11" font-weight="bold">dist/index.html</text>
+              <text x="555" y="255" fill="#6ee7b7" font-size="9.5">Tailwind + DaisyUI UI</text>
+              <text x="555" y="270" fill="#94a3b8" font-size="9">HtmlService配信テンプレート</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_manifest')">
+              <rect x="545" y="310" width="170" height="75" rx="5" fill="#022c22" stroke="#059669" stroke-width="1"/>
+              <text x="555" y="335" fill="#ecfdf5" font-size="11" font-weight="bold">appsscript.json</text>
+              <text x="555" y="355" fill="#6ee7b7" font-size="9.5">V8 Runtime & Drive API宣言</text>
+              <text x="555" y="370" fill="#94a3b8" font-size="9">アクセス権限スコープ定義</text>
+            </g>
+
+            <!-- Arrow 3 -> 4 -->
+            <path d="M 730 240 L 765 240" stroke="#10b981" stroke-width="2" marker-end="url(#pipe-arrow)"/>
+
+            <!-- Column 4: clasp & GAS Cloud -->
+            <rect x="770" y="30" width="200" height="420" rx="8" fill="#451a03" stroke="#f59e0b" stroke-width="1.5"/>
+            <text x="790" y="60" fill="#fbbf24" font-size="13" font-weight="bold">🚀 clasp & GAS V8 Cloud</text>
+            <text x="790" y="78" fill="#94a3b8" font-size="10">固定デプロイID運用</text>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_clasp')">
+              <rect x="785" y="105" width="170" height="75" rx="5" fill="#78350f" stroke="#d97706" stroke-width="1"/>
+              <text x="795" y="130" fill="#fef3c7" font-size="11" font-weight="bold">.clasp.json</text>
+              <text x="795" y="150" fill="#fde68a" font-size="9.5">rootDir: "dist"</text>
+              <text x="795" y="165" fill="#cbd5e1" font-size="9">GASプロジェクトID連携</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_deploy_dev')">
+              <rect x="785" y="200" width="170" height="85" rx="5" fill="#78350f" stroke="#d97706" stroke-width="1"/>
+              <text x="795" y="223" fill="#fef3c7" font-size="11" font-weight="bold">deploy:gas:dev</text>
+              <text x="795" y="242" fill="#fde68a" font-size="9.5">開発用固定デプロイID</text>
+              <text x="795" y="260" fill="#cbd5e1" font-size="9">clasp push + deploy -i DEV_ID</text>
+              <text x="795" y="275" fill="#94a3b8" font-size="8.5">URL不変・即座に検証可能</text>
+            </g>
+
+            <g class="interactive-node" onclick="inspectNode('pipe_deploy_prod')">
+              <rect x="785" y="305" width="170" height="85" rx="5" fill="#78350f" stroke="#d97706" stroke-width="1"/>
+              <text x="795" y="328" fill="#fef3c7" font-size="11" font-weight="bold">deploy:gas:prod</text>
+              <text x="795" y="347" fill="#fde68a" font-size="9.5">本番用固定デプロイID</text>
+              <text x="795" y="365" fill="#cbd5e1" font-size="9">clasp push + deploy -i PROD_ID</text>
+              <text x="795" y="380" fill="#94a3b8" font-size="8.5">安全な本番反映</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- ================= TAB 5: 課題・改善計画 ================= -->
+      <div id="pane-gap" class="view-pane">
+        <div class="diagram-container">
+          <div class="diagram-title" style="margin-bottom:1rem;">
+            <span>⚠️</span> 既存資産のリバースエンジニアリングで判明した技術的負債 & 改善ロードマップ
+          </div>
+
+          <table class="spec-table">
+            <thead>
+              <tr>
+                <th style="width:16%;">領域</th>
+                <th style="width:30%;">現行の仕様・実装 (As-Is)</th>
+                <th style="width:24%;">内在リスク・問題点</th>
+                <th style="width:30%;">推奨移行アーキテクチャ (To-Be)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong style="color:#ef4444;">OCR Drive依存</strong></td>
+                <td>Drive API (v2/v3) で Docs に変換してテキスト抽出。ゴミ箱移動のみ実施。</td>
+                <td>環境によってDrive APIが無効でクラッシュ。失敗時にゴミファイル蓄積。</td>
+                <td>Cloud Vision API 直接呼出、または完全な例外キャッチと隔離フォルダー内パージ。</td>
+              </tr>
+              <tr>
+                <td><strong style="color:#f59e0b;">ハードコード補正</strong></td>
+                <td>Webapp.gs 内の <code>correctionMap</code> に特定の作業番号（10014958等）を直書き。</td>
+                <td>シチズン新レポートの追加のたびにGASコードの修正・再デプロイが必要。</td>
+                <td><code>OcrCorrectionMaster</code> シートを新設し、UI上から補正辞書を更新可能にする。</td>
+              </tr>
+              <tr>
+                <td><strong style="color:#f59e0b;">非正規化データ</strong></td>
+                <td><code>MaintenanceLog</code> の部品コードと数量をパイプ（<code>|</code>）区切り文字列で保存。</td>
+                <td>どの部品が何個使用されたかの集計・クエリが極めて困難。不整合リスク。</td>
+                <td><code>MaintenancePartDetail</code> リレーショナルシートの導入、またはJSON構造化。</td>
+              </tr>
+              <tr>
+                <td><strong style="color:#3b82f6;">全件一括ロード</strong></td>
+                <td>クライアント初期化時に <code>get*Data</code> で全シートの全件を毎回ロード。</td>
+                <td>履歴データが数千件を超えた際にGAS 6分タイムアウトおよびブラウザ描画フリーズ。</td>
+                <td>ページネーション（最新50件取得）およびサーバーサイド複合検索APIの導入。</td>
+              </tr>
+              <tr>
+                <td><strong style="color:#10b981;">✅ 型安全性 (対応完了)</strong></td>
+                <td>純粋なJavaScript/GASで実装されており型注釈が皆無（プロパティ名表記揺れあり）。</td>
+                <td><code>Machine_type</code> と <code>machine_type</code> の混在等、実行時バグの温床。</td>
+                <td><span style="color:#10b981; font-weight:bold;">【実装対応】</span> TypeScript (clasp) 構成、厳格な Interface/Type、決定論的型検査（<code>tsc --noEmit</code>）およびVitest単体テストを導入。</td>
+              </tr>
+              <tr>
+                <td><strong style="color:#10b981;">新機能要件</strong></td>
+                <td>穴寸法やFusionパラメータの管理項目が存在しない。</td>
+                <td>今後の仕様拡張要求（syncRequirements）に対応不可。</td>
+                <td>穴寸法 ＆ Fusionパラメータ用の独立タブ（CAD連携設計）の追加。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Inspector Side Panel -->
+    <div id="inspector" class="inspector-panel">
+      <div class="inspector-header">
+        <div class="inspector-title">
+          <span>🔍</span> <span id="insp-title">コンポーネント詳細</span>
+        </div>
+        <button class="tab-btn" onclick="closeInspector()" style="padding:0.2rem 0.5rem;">✕</button>
+      </div>
+      <div class="inspector-content">
+        <div class="inspector-card">
+          <div class="inspector-label">識別子 / カテゴリ</div>
+          <div id="insp-cat" class="inspector-value">-</div>
+        </div>
+
+        <div class="inspector-card">
+          <div class="inspector-label">概要 & 役割</div>
+          <div id="insp-desc" class="inspector-value">-</div>
+        </div>
+
+        <div class="inspector-card">
+          <div class="inspector-label">技術仕様 & 不変則 (Invariants)</div>
+          <div id="insp-spec" class="inspector-value">-</div>
+        </div>
+
+        <div class="inspector-card">
+          <div class="inspector-label">関連コード箇所</div>
+          <div id="insp-code" class="code-block">-</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Tab Switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.view-pane').forEach(pane => pane.classList.remove('active'));
+
+      const targetPane = document.getElementById('pane-' + tabId);
+      if (targetPane) {
+        targetPane.classList.add('active');
+      }
+
+      event.currentTarget.classList.add('active');
+    }
+
+    // Inspector Knowledge Base
+    const nodeData = {
+      'c_view': {
+        title: '履歴閲覧タブ (tab: view)',
+        cat: 'Frontend UI Component / View',
+        desc: 'メンテナンス履歴の閲覧、複合絞り込み（機械種別・号機・フリーワード）、日付降順ソート、選択号機のスペックカード表示を行う画面。各行から編集モードへの遷移トリガーを持つ。',
+        spec: '• 日付フォーマット変換 (YYYY/MM/DD -> ソート用数値)\n• レスポンシブ (PC: テーブル / スマホ: カード)\n• 交換部品の整形 (PartMasterと照合して名称・型番・数量表示)',
+        code: 'index.html (L177-388)\nfilteredLogs(), formatPartsForDisplay(), editLog()'
+      },
+      'c_input': {
+        title: '履歴入力・編集タブ (tab: input)',
+        cat: 'Frontend UI Component / Form',
+        desc: 'メンテナンス記録の新規登録および既存記録の更新を行うフォーム。編集時はバナー表示とキャンセルボタンが有効化される。',
+        spec: '• 必須項目: machine_id, maintenance_date\n• 担当者名の自動保管 & datalist連動\n• 部品複数選択配列をパイプ区切り形式（|）に変換して送信',
+        code: 'index.html (L389-525)\nsubmitForm(), cancelEdit(), resetForm()'
+      },
+      'c_machine': {
+        title: '新規機械登録タブ (tab: register)',
+        cat: 'Frontend UI Component / Form',
+        desc: '新規の号機（MachineMaster）を登録する画面。機械種別の選択に応じて自動的に空き連番をサジェストし、機械IDプレフィックス（NC001等）を自動生成する。',
+        spec: '• suggestNextMachineNo(): 最小の空き番号を走査\n• 給材機情報のアコーディオン折りたたみ\n• submitMachineForm(): confirm確認ダイアログ付き',
+        code: 'index.html (L526-685)\nsuggestNextMachineNo(), updateMachineId(), submitMachineForm()'
+      },
+      'c_ocr': {
+        title: 'OCR解析タブ (tab: ocr)',
+        cat: 'Frontend UI Component / OCR Engine UI',
+        desc: 'シチズンマシナリー等の作業報告書PDF/画像をドラッグ＆ドロップで受領し、OCR解析結果をプレビュー。未登録部品のマスタ追加や入力フォームへの自動転記を行う。',
+        spec: '• 対応フォーマット: PDF, PNG, JPG (最大10MB)\n• 機番(machineNo)から号機を自動検索\n• copyOcrToInputForm(): 【状況】【調査内容】【処置】を結合転記',
+        code: 'index.html (L686-830)\nhandleOcrFileDrop(), processOcrFile(), copyOcrToInputForm()'
+      },
+      'c_modal': {
+        title: '部品選択/新規登録モーダル (showPartModal)',
+        cat: 'Frontend UI Component / Dialog',
+        desc: 'パーツリストからチェックボックスで複数選択し数量を設定するモーダル。リスト内に存在しないパーツは、その場で新規部品マスタ（P0001自動採番）として登録可能。',
+        spec: '• P + 4桁連番の最大値+1による自動採番\n• キーワードインクリメンタル絞込\n• 選択状態のディープコピーと一時バッファ管理',
+        code: 'index.html (L831-935)\nopenPartModal(), toggleTempPart(), addPartMaster()'
+      },
+      'c_state': {
+        title: 'Alpine.js App State Store',
+        cat: 'Frontend Reactive Store',
+        desc: 'クライアント側の全状態を一元管理するAlpine.jsコンポーネント。マスタデータ配列、検索条件、フォームデータ、アラート状態、OCR結果をリアクティブにバインド。',
+        spec: '• localStorage によるダーク/ライトテーマ永続化\n• loadData() による5種マスタ並行フェッチと完了同期\n• プロパティ変更のDOM自動反映',
+        code: 'index.html (L943-1007)\nfunction app() { return { tab, machines, form... } }'
+      },
+      'c_bridge': {
+        title: 'google.script.run Client RPC',
+        cat: 'Client-Server Communication Bridge',
+        desc: 'GASバックエンド関数を非同期呼び出しするクライアントAPI。成功ハンドラ（withSuccessHandler）と失敗ハンドラ（withFailureHandler）をチェーンして結果を受け取る。',
+        spec: '• 非同期RPC呼び出し\n• 引数・返却値はJSONシリアライズ可能オブジェクト\n• 例外発生時はwithFailureHandlerへエラーオブジェクト伝播',
+        code: 'index.html (L1017-1095)\ngoogle.script.run.withSuccessHandler(...).get*MasterData()'
+      },
+      'g_lock': {
+        title: 'LockService (排他制御ガード)',
+        cat: 'GAS Backend / Concurrency Guard',
+        desc: 'スプレッドシートへの書込処理において、同時実行による行競合・上書き・連番衝突を防ぐための排他ロック。',
+        spec: '• LockService.getScriptLock()\n• 最大待機時間: 30,000ms (30秒)\n• 不変則: 必ず try-finally 構文内で releaseLock() を実行',
+        code: 'Webapp.gs (L803-841, L848-902, L1061-1106, L1113-1165, L1172-1246)'
+      },
+      'g_maint': {
+        title: 'Maintenance Log Service',
+        cat: 'GAS Backend Service',
+        desc: 'メンテナンス履歴の新規追記（addMaintenanceLog）および既存更新（updateMaintenanceLog）を担当。',
+        spec: '• 新規時: Utilities.getUuid() でlog_id採番\n• 更新時: 既存行をlog_idで検索しsetValues。input_timestampは維持\n• 担当者名が存在する場合はOperatorMasterへ自動追加',
+        code: 'Webapp.gs (L848-903, L1172-1247)'
+      },
+      'g_master': {
+        title: 'Master Data Service',
+        cat: 'GAS Backend Service',
+        desc: '機械・部品・担当者・機械種別のマスタデータを取得・登録するサービス。シート未存在時はヘッダー自動作成とモックデータ投入を行う。',
+        spec: '• PartMaster: P0001 連番自動生成\n• OperatorMaster: OP001 自動生成 (同名重複防止)\n• MachineMaster: 列ヘッダーベースの動的マッピング',
+        code: 'Webapp.gs (L720-842, L908-973, L1015-1165)'
+      },
+      'g_ocr': {
+        title: 'OCR Processing Service',
+        cat: 'GAS Backend / OCR Processor',
+        desc: 'PDF/画像Base64を受け取り、Drive OCRを経てテキスト化。作業番号・機種・機番・納入日・セクション・交換部品一覧を正規表現抽出。',
+        spec: '• Drive API v2 insert / v3 create 自動フォールバック\n• 既知作業番号（10014958等）のハードコード補正辞書適用\n• 「シチズンマシナリー作業報告書」シートへ自動履歴保存',
+        code: 'Webapp.gs (L203-450, L450-576, L581-703)'
+      },
+      'g_norm': {
+        title: 'Text Normalizer & Parser',
+        cat: 'GAS Backend / Helper Utilities',
+        desc: '全角半角変換、カナ濁点合成、記号統一（〜、-、μm）、クォート対応CSVパーサー、部品名クレンジングを行うユーティリティ集。',
+        spec: '• convertHankakuToZenkaku: 濁点・半濁点の2文字合成対応\n• parseCsvRows: ダブルクォート内改行・カンマ考慮ステートマシン\n• cleanPartName: 品目コード・金額・数量トークンを除外',
+        code: 'Webapp.gs (L1-200)'
+      },
+      'g_doget': {
+        title: 'doGet(e) / HtmlService',
+        cat: 'GAS Entry Point',
+        desc: 'Webアプリケーションのエントリーポイント。index.html を評価してレンダリングし、XFrameOptionsMode.ALLOWALL で配信。',
+        spec: '• HtmlService.createTemplateFromFile("index")\n• タイトル: 機械メンテナンス入力フォーム\n• viewport メタタグ付与',
+        code: 'Webapp.gs (L708-714)'
+      },
+      'd_drive': {
+        title: 'Google Drive API (v2 / v3)',
+        cat: 'Google Cloud Platform Service',
+        desc: 'PDFバイナリを一時ファイルとして作成し、MIMEタイプ "application/vnd.google-apps.document" かつ ocrLanguage: "ja" を指定してDocs変換を実行。',
+        spec: '• Drive.Files.insert (v2) または Drive.Files.create (v3)\n• 処理完了後は DocumentApp 側でIDを取得して即座に setTrashed(true)',
+        code: 'Webapp.gs (L227-247, L581-591)'
+      },
+      'd_docs': {
+        title: 'DocumentApp OCR Engine',
+        cat: 'Google Apps Script Service',
+        desc: 'Drive APIによってOCR変換されたGoogleドキュメントを開き、getBody().getText() により全文テキストを抽出する。',
+        spec: '• DocumentApp.openById(tempId)\n• テキスト抽出後に一時ドキュメントをゴミ箱移動',
+        code: 'Webapp.gs (L586-590)'
+      },
+      'd_save': {
+        title: 'saveOcrToSheet (報告書ログ保管)',
+        cat: 'Spreadsheet Storage Service',
+        desc: 'OCRによってパースされた作業報告書の生データ・メタデータ・部品情報を「シチズンマシナリー作業報告書」シートに追記保管する。',
+        spec: '• シート未存在時は全22列ヘッダーを自動作成\n• 交換部品1〜10列 (コード|品名|数量) を展開保存\n• OCR解析ステータス "Success" と実行日時を記録',
+        code: 'Webapp.gs (L639-677)'
+      },
+      's_log': {
+        title: 'MaintenanceLog (メンテナンス履歴シート)',
+        cat: 'Spreadsheet Database Table',
+        desc: '機械のすべての保守・点検・修理記録を保持する中心テーブル。',
+        spec: '• 主キー: log_id (UUID)\n• 外部キー: machine_id -> MachineMaster\n• part_number / part_quantity はパイプ (|) 区切り\n• input_timestamp は初回作成時のみ記録（更新時維持）',
+        code: 'Webapp.gs (L848-903, L978-1010, L1172-1246)'
+      },
+      's_machine': {
+        title: 'MachineMaster (機械マスタシート)',
+        cat: 'Spreadsheet Database Table',
+        desc: '保有する全機械の基本スペックおよび給材機情報を管理するマスタテーブル。',
+        spec: '• 主キー: machine_id (例: NC001)\n• machine_id_No: 種類内の通し番号 (数値)\n• 給材機名・形式・機番・製造年月日を含む',
+        code: 'Webapp.gs (L720-737, L908-936, L1113-1165)'
+      },
+      's_part': {
+        title: 'PartMaster (部品マスタシート)',
+        cat: 'Spreadsheet Database Table',
+        desc: '修理・交換に使用されるパーツの一覧マスタ。シート未存在時はP0001〜P0005の初期モックデータが自動投入される。',
+        spec: '• 主キー: part_id (P0001〜 自動連番)\n• part_number: メーカー部品型番 (照合キー)\n• machine_type: 対象機械種別 (または "共通")',
+        code: 'Webapp.gs (L1015-1107)'
+      },
+      's_other': {
+        title: 'OperatorMaster & MachineTypeMaster',
+        cat: 'Spreadsheet Database Tables',
+        desc: '担当者マスタ（OperatorMaster）および機械種別マスタ（MachineTypeMaster）。',
+        spec: '• OperatorMaster: OP001〜 自動連番、氏名重複防止\n• MachineTypeMaster: NC, WR, HR, MZ, AK, AI, AC 等の種別コード',
+        code: 'Webapp.gs (L742-841, L941-973)'
+      },
+      'pipe_types': {
+        title: 'TypeScript 型定義 (src/types/index.ts)',
+        cat: 'Pipeline / Type Definition',
+        desc: '機械マスタ、担当者、部品マスタ、メンテナンス履歴、OCRパース結果、APIレスポンスの厳格な型インターフェースを定義。',
+        spec: '• 完全型安全性の担保\n• 表記揺れ（machine_type等）の排除\n• コンパイル時契約の確立',
+        code: 'src/types/index.ts'
+      },
+      'pipe_services': {
+        title: 'バックエンドビジネスロジック (src/services/)',
+        cat: 'Pipeline / Core Service',
+        desc: '排他制御（LockService）を伴うデータ永続化（MaintenanceService）およびID自動採番・サジェスト（MasterService）のモジュール。',
+        spec: '• 30秒ロック機構の確実な解放\n• input_timestamp 不変則の死守\n• 最小空き連番の自動算出',
+        code: 'src/services/MasterService.ts\nsrc/services/MaintenanceService.ts'
+      },
+      'pipe_parsers': {
+        title: 'OCR・テキストパーサー (src/parsers/ & utils/)',
+        cat: 'Pipeline / Parser & Utils',
+        desc: 'サービスレポートPDFから抽出されたテキストの半角カナ変換、正規表現メタデータ抽出、CSV行パース、補正辞書適用ロジック。',
+        spec: '• 日本語カナ正規化\n• 金額・数量の安全な数値パース\n• 独立したユニットテストによる保証',
+        code: 'src/parsers/OcrParser.ts\nsrc/utils/TextUtils.ts'
+      },
+      'pipe_entry': {
+        title: 'GASエントリーポイント (src/index.ts)',
+        cat: 'Pipeline / GAS RPC Gateway',
+        desc: 'doGet(e) によるHTMLテンプレート配信、および google.script.run から呼び出される全公開API関数をグローバルスコープへエクスポート。',
+        spec: '• GAS WebApp エントリポイント\n• 例外の安全なApiResultラップ\n• esbuild バンドル入力',
+        code: 'src/index.ts'
+      },
+      'pipe_typecheck': {
+        title: '静的型検査 (tsc --noEmit)',
+        cat: 'Verification Gate / Type Check',
+        desc: 'TypeScriptコンパイラによる静的型解析。すべての型注釈、プロパティ、戻り値が厳格に一致することを検証。',
+        spec: '• エラー 0 件必須\n• 決定論的検証ループ Step 1\n• npm run type-check',
+        code: 'package.json -> "type-check": "tsc --noEmit"'
+      },
+      'pipe_vitest': {
+        title: '単体テスト (Vitest Test Suite)',
+        cat: 'Verification Gate / Contract Test',
+        desc: 'Node.js環境で実行される高速ユニットテスト。採番規則、不変則、OCR正規表現パース等を決定論的に検証。',
+        spec: '• 全テスト合格（Pass 100%）必須\n• 決定論的検証ループ Step 2\n• npm test',
+        code: 'tests/**/*.test.ts'
+      },
+      'pipe_emptycheck': {
+        title: '空ファイル検出ゲート (Empty File Guard)',
+        cat: 'Verification Gate / Integrity Guard',
+        desc: 'ビルド生成物やソースコードに 0 バイトの空ファイルが存在しないことを機械的にチェック。',
+        spec: '• 0バイトファイル検出時エラー停止\n• 決定論的検証ループ Step 3',
+        code: 'verify-empty.js またはシェル検証コマンド'
+      },
+      'pipe_bundle': {
+        title: 'GAS向けバンドル成果物 (dist/Code.js)',
+        cat: 'Build Artifact / GAS Script',
+        desc: 'esbuild により TypeScript ソースを GAS V8 ランタイム互換の単一 JS ファイルとして高速バンドル。グローバル関数を露出。',
+        spec: '• format: iife / global\n• dist/ 配下へのクリーンビルド\n• clasp push の転送対象',
+        code: 'dist/Code.js'
+      },
+      'pipe_assets': {
+        title: 'HTMLアセット同期 (dist/index.html)',
+        cat: 'Build Artifact / Client Asset',
+        desc: 'Tailwind CSS + DaisyUI + Alpine.js で構成されたWebフロントエンドHTMLを dist/ へ同期。',
+        spec: '• HtmlService.createTemplateFromFile("index") で配信\n• レスポンシブ & ダークモード対応',
+        code: 'dist/index.html'
+      },
+      'pipe_manifest': {
+        title: 'GASマニフェスト (dist/appsscript.json)',
+        cat: 'Build Artifact / Manifest',
+        desc: 'GASプロジェクトの設定マニフェスト。V8ランタイム、タイムゾーン（Asia/Tokyo）、Drive API等の依存関係を明示宣言。',
+        spec: '• runtimeVersion: "V8"\n• timeZone: "Asia/Tokyo"\n• oauthScopes / dependencies',
+        code: 'dist/appsscript.json'
+      },
+      'pipe_clasp': {
+        title: 'clasp設定 (.clasp.json)',
+        cat: 'Deployment Configuration',
+        desc: 'Google Apps Script 公式CLIツール clasp のプロジェクト設定。rootDir を dist に設定し、dist/ 配下のみを同期。',
+        spec: '• scriptId 連携\n• rootDir: "dist"\n• 不要ファイルのGASアップロード遮断',
+        code: '.clasp.json'
+      },
+      'pipe_deploy_dev': {
+        title: '開発用固定デプロイ (npm run deploy:gas:dev)',
+        cat: 'Deployment / Dev Stage',
+        desc: 'コードをビルド・Pushし、開発用固定デプロイIDに即時反映。WebアプリのURLが変わらず共有・検証可能。',
+        spec: '• npm run push && clasp deploy -i <DEV_DEPLOYMENT_ID>\n• URL不変',
+        code: 'package.json -> "deploy:gas:dev"'
+      },
+      'pipe_deploy_prod': {
+        title: '本番用固定デプロイ (npm run deploy:gas:prod)',
+        cat: 'Deployment / Prod Stage',
+        desc: 'コードをビルド・Pushし、本番用固定デプロイIDに即時反映。現場運用中のWebアプリを安全に更新。',
+        spec: '• npm run push && clasp deploy -i <PROD_DEPLOYMENT_ID>\n• 高信頼リリース運用',
+        code: 'package.json -> "deploy:gas:prod"'
+      }
+    };
+
+    function inspectNode(nodeId) {
+      const data = nodeData[nodeId];
+      if (!data) return;
+
+      document.querySelectorAll('.interactive-node').forEach(el => el.classList.remove('selected'));
+      if (event && event.currentTarget) {
+        event.currentTarget.classList.add('selected');
+      }
+
+      document.getElementById('insp-title').textContent = data.title;
+      document.getElementById('insp-cat').textContent = data.cat;
+      document.getElementById('insp-desc').textContent = data.desc;
+      document.getElementById('insp-spec').textContent = data.spec;
+      document.getElementById('insp-code').textContent = data.code;
+
+      document.getElementById('inspector').style.transform = 'translateX(0)';
+    }
+
+    function closeInspector() {
+      document.getElementById('inspector').style.transform = 'translateX(100%)';
+    }
+
+    // Interactive Simulation
+    let simTimer = null;
+    function startSim() {
+      const simText = document.getElementById('sim-text');
+      const steps = [
+        "ステップ 1: ユーザーがサービスレポートPDFをOCRタブへドラッグ＆ドロップ",
+        "ステップ 2: クライアントがBase64に変換し、runOcrOnBlob() を非同期呼び出し",
+        "ステップ 3: GASがDrive APIでDocsにOCR変換し、テキスト・部品を正規表現抽出",
+        "ステップ 4: 「シチズンマシナリー作業報告書」シートへ解析結果を自動保存",
+        "ステップ 5: 「履歴入力フォームに転記」実行で号機特定・日付・本文・部品を自動セット",
+        "ステップ 6: ユーザーが「登録する」を押下 -> LockServiceで30秒排他ロック取得",
+        "ステップ 7: 担当者未登録判定 -> OperatorMasterへ自動採番追加",
+        "ステップ 8: MaintenanceLogシート末尾にUUID付き新規行を安全に追記 -> 完了！"
+      ];
+
+      let currentStep = 0;
+      clearInterval(simTimer);
+      simText.textContent = steps[0];
+
+      simTimer = setInterval(() => {
+        currentStep++;
+        if (currentStep < steps.length) {
+          simText.textContent = steps[currentStep];
+        } else {
+          clearInterval(simTimer);
+          simText.textContent = "シミュレーション完了: 正常系フローが全ステップ完了しました。";
+        }
+      }, 1800);
+    }
+  </script>
+</body>
+</html>
+

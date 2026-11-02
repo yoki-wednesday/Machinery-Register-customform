@@ -1,13 +1,13 @@
 {
   "version": "1.0.0",
-  "savedAt": "2026-11-02T07:38:45.175Z",
-  "recipe": "blank",
+  "savedAt": "2026-11-02T07:53:56.895Z",
+  "recipe": "gas",
   "config": {
     "feature": "Machinery-Register-customform",
     "summary": "大平テック機械台帳入力フォーム",
     "user": "自分",
     "legacyAssets": "【既存資産フォルダ構成: archive/】\n・index.html\n・Webapp.gs\n\n※上記フォルダ配下のコード・資産をもとに仕様化してください。",
-    "syncRequirements": "穴寸法 ＆ Fusionパラメータ内の横穴は独立したタブにする。"
+    "syncRequirements": "Google Apps Script (V8) + TypeScript (clasp)"
   },
   "steps": {
     "step0": true,
