@@ -1,13 +1,13 @@
 {
   "version": "1.0.0",
-  "savedAt": "2026-11-02T07:53:56.895Z",
+  "savedAt": "2026-11-02T08:10:29.540Z",
   "recipe": "gas",
   "config": {
     "feature": "Machinery-Register-customform",
     "summary": "大平テック機械台帳入力フォーム",
     "user": "自分",
     "legacyAssets": "【既存資産フォルダ構成: archive/】\n・index.html\n・Webapp.gs\n\n※上記フォルダ配下のコード・資産をもとに仕様化してください。",
-    "syncRequirements": "Google Apps Script (V8) + TypeScript (clasp)"
+    "syncRequirements": ""
   },
   "steps": {
     "step0": true,
