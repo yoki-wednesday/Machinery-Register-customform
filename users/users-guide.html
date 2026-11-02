@@ -1,0 +1,2295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>非エンジニア向け SDD & 決定論的検証ループ コンソール</title>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-surface: #1e293b;
+      --bg-card: #182234;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --border: #334155;
+      --code-bg: #0b1120;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --model-low: #a78bfa;
+      --model-medium: #38bdf8;
+      --model-high: #f43f5e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .container { max-width: 1000px; margin: 0 auto; }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-title h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem;
+    }
+
+    .header-title p { color: var(--text-muted); font-size: 0.95rem; }
+
+    .btn-new-project {
+      background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+      color: #0f172a;
+      border: none;
+      padding: 0.65rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .btn-new-project:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(56, 189, 248, 0.5);
+    }
+
+    .active-recipe-banner {
+      background: linear-gradient(90deg, rgba(56, 189, 248, 0.12) 0%, rgba(129, 140, 248, 0.12) 100%);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 1.1rem 1.4rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .active-recipe-info h3 {
+      font-size: 1.05rem;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .active-recipe-info p {
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      margin: 0;
+    }
+
+    /* Project Config Inputs */
+    .config-card {
+      background: linear-gradient(145deg, #1e293b 0%, #162032 100%);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.15);
+    }
+
+    .config-card h3 {
+      font-size: 1.1rem;
+      color: var(--accent);
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .config-card p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .config-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .input-group label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .input-group label span {
+      font-weight: normal;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .input-group input,
+    .input-group textarea {
+      background-color: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.6rem 0.8rem;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+
+    .input-group input:focus,
+    .input-group textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-reset-config {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-clear-config {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-clear-config:hover {
+      border-color: var(--warning);
+      color: var(--warning);
+    }
+
+    .config-action-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 1.25rem;
+    }
+
+    .btn-apply-config {
+      background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+      color: #0f172a;
+      border: none;
+      padding: 0.65rem 1.75rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .btn-apply-config:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(56, 189, 248, 0.5);
+    }
+
+    .btn-apply-config:disabled {
+      background: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+      opacity: 0.65;
+    }
+
+    .btn-reset-config:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .summary-table-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .summary-table-card h3 {
+      font-size: 1.1rem;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th { color: var(--text-muted); font-weight: 600; }
+
+    .card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+
+    .card.open {
+      border-color: var(--accent);
+    }
+
+    .card-header {
+      padding: 1.25rem 1.5rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      transition: background-color 0.2s ease;
+    }
+
+    .card-header:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .card-header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .card-header h2 {
+      margin-bottom: 0;
+      font-size: 1.2rem;
+    }
+
+    .card-toggle-icon {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      transition: transform 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .card.open .card-toggle-icon {
+      transform: rotate(180deg);
+      color: var(--accent);
+    }
+
+    .card-body {
+      display: none;
+      padding: 0 1.5rem 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .card.open .card-body {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 進捗バー & ステータス */
+    .progress-card {
+      background: linear-gradient(145deg, #1e293b 0%, #162032 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.4rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.92rem;
+    }
+
+    .progress-title {
+      font-weight: 700;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .progress-stats {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 0.95rem;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: var(--code-bg);
+      border-radius: 9999px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8 0%, #34d399 100%);
+      border-radius: 9999px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding-top: 0.5rem;
+      border-top: 1px dashed var(--border);
+    }
+
+    .dir-sync-panel {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .dir-status-badge {
+      font-size: 0.8rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: #94a3b8;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dir-status-badge.connected {
+      background: rgba(52, 211, 153, 0.15);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .btn-sync-action {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      border-radius: 6px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-sync-action:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .btn-sync-action.primary {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(2, 132, 199, 0.3) 100%);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-sync-action.primary:hover {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.35) 0%, rgba(2, 132, 199, 0.45) 100%);
+      color: #fff;
+    }
+
+    .btn-reset-progress {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-reset-progress:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .card.completed {
+      border-color: rgba(52, 211, 153, 0.4);
+      background-color: rgba(24, 34, 52, 0.6);
+    }
+
+    .card.completed .card-header h2 {
+      color: #94a3b8;
+      text-decoration: line-through;
+      text-decoration-color: rgba(148, 163, 184, 0.6);
+    }
+
+    .step-check-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      user-select: none;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    .step-check-label:hover {
+      border-color: var(--success);
+      color: #fff;
+    }
+
+    .step-check-label input[type="checkbox"] {
+      width: 1.05rem;
+      height: 1.05rem;
+      cursor: pointer;
+      accent-color: var(--success);
+    }
+
+    .step-check-label.checked {
+      background: rgba(52, 211, 153, 0.15);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .prompt-box {
+      background-color: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      position: relative;
+      margin: 0.75rem 0 1rem;
+    }
+
+    .prompt-text {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.92rem;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.6rem;
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--accent-hover);
+      color: #fff;
+    }
+
+    .step-pill {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .step-pill-secondary {
+      background: rgba(148, 163, 184, 0.15);
+      border: 1px solid var(--text-muted);
+      color: #cbd5e1;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .step-pill-warning {
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid var(--warning);
+      color: var(--warning);
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .badge-model {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .model-low { background: rgba(167, 139, 250, 0.15); color: var(--model-low); border: 1px solid var(--model-low); }
+    .model-medium { background: rgba(56, 189, 248, 0.15); color: var(--model-medium); border: 1px solid var(--model-medium); }
+    .model-high { background: rgba(244, 63, 94, 0.15); color: var(--model-high); border: 1px solid var(--model-high); }
+
+    .explanation {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-content {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 720px;
+      padding: 2rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+    }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .recipe-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 640px) {
+      .recipe-grid { grid-template-columns: 1fr; }
+    }
+
+    .recipe-card {
+      background-color: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .recipe-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .recipe-card.active {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    .recipe-title {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #fff;
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge-recommend {
+      background: rgba(52, 211, 153, 0.2);
+      border: 1px solid var(--success);
+      color: var(--success);
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .recipe-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--success);
+      color: #0f172a;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+      pointer-events: none;
+      z-index: 200;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* デプロイ手順スタイル */
+    .deploy-guide-content {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+    .deploy-alert {
+      background: rgba(248, 113, 113, 0.12);
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      padding: 0.9rem 1.1rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.88rem;
+    }
+    .deploy-alert h4 {
+      color: var(--danger);
+      font-size: 0.95rem;
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .deploy-step-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-top: 1rem;
+    }
+    .deploy-step-item {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.1rem 1.25rem;
+    }
+    .deploy-step-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.6rem;
+    }
+    .deploy-step-number {
+      background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+      color: #0f172a;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .deploy-step-desc {
+      margin-left: 2.35rem;
+    }
+    .deploy-step-desc ul {
+      list-style-type: disc;
+      margin-left: 1.25rem;
+      margin-top: 0.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .deploy-code-block {
+      background-color: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.6rem 0.9rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.88rem;
+      color: #38bdf8;
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .deploy-inline-code {
+      background-color: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.85rem;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-title">
+        <h1>非エンジニア向け SDD & 検証ループ コンソール</h1>
+        <p>定型プロンプトを順番に送信するだけで、仕様策定からArchify視覚化・自律検証までを完全実行</p>
+      </div>
+      <button class="btn-new-project" onclick="openModal()">
+        <span>+</span> 新規プロジェクト
+      </button>
+    </header>
+
+    <div class="active-recipe-banner">
+      <div class="active-recipe-info">
+        <h3 id="currentRecipeTitle">🏷️ 選択中レシピ: Google Apps Script (V8) + TypeScript (clasp)</h3>
+        <p id="currentRecipeDesc">スプレッドシート自動化、バッチ処理、6分制限・LockService排他制御、esbuild Tree-shaking空ファイル化防止 & GASパーサー構文エラー恒久防止（es2019ターゲット）ガード付き。distビルド出力、開発・本番の分離と固定WebURLデプロイ。</p>
+      </div>
+      <button class="copy-btn" style="position:static;" onclick="openModal()">レシピ変更</button>
+    </div>
+
+    <!-- Project Config Inputs (Auto-fill) -->
+    <div class="config-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+        <h3>⚡ プロジェクト基本情報（プロンプト自動埋め込み）</h3>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn-clear-config" onclick="clearConfigInputs()">入力フォームをクリア</button>
+          <button class="btn-reset-config" onclick="resetConfigInputs()">初期値に戻す</button>
+        </div>
+      </div>
+      <p>3つの項目をすべて入力して「基本情報を確定する」ボタンを押すと、以下の Step 0〜6 および仕様同期ループのプロンプトに反映されます（ブラウザに自動保存）。</p>
+      <div class="config-grid">
+        <div class="input-group">
+          <label for="cfgFeature">機能名 (英数字スラグ) <span>例: daily-report</span></label>
+          <input type="text" id="cfgFeature" placeholder="daily-report" oninput="handleConfigChange()">
+        </div>
+        <div class="input-group">
+          <label for="cfgSummary">作りたい機能の概要 <span>例: 顧客アンケート集計...</span></label>
+          <input type="text" id="cfgSummary" placeholder="顧客アンケートスプレッドシートの集計・日次バッチ・Gmail通知" oninput="handleConfigChange()">
+        </div>
+        <div class="input-group">
+          <label for="cfgUser">対象ユーザー <span>例: 社内事務スタッフ</span></label>
+          <input type="text" id="cfgUser" placeholder="社内事務スタッフ" oninput="handleConfigChange()">
+        </div>
+      </div>
+      <div class="config-action-row">
+        <button id="btnApplyConfig" class="btn-apply-config" onclick="applyConfigInputs()" disabled>
+          基本情報を確定する
+        </button>
+      </div>
+    </div>
+
+    <div class="card summary-table-card">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-left">
+          <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent); display: flex; align-items: center; gap: 0.5rem;">
+            📊 ステップ別 推奨モデル切り替え早見表 (Step 0 〜 6 ＋ 仕様同期)
+          </h3>
+        </div>
+        <div class="card-toggle-icon">▼</div>
+      </div>
+      <div class="card-body" style="padding-top: 1rem;">
+        <table>
+          <thead>
+            <tr>
+              <th>ステップ</th>
+              <th>目的</th>
+              <th>指定モデル</th>
+              <th>理由</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Step 0 (任意)</td>
+              <td>既存コード/シートから仕様逆生成</td>
+              <td><span class="badge-model model-high">Gemini 3.8 Flash (High)</span></td>
+              <td>既存スクリプト・データ構造の深層解析・spec & 図面化</td>
+            </tr>
+            <tr>
+              <td>Step 1</td>
+              <td>要件ヒアリング & 仕様草案</td>
+              <td><span class="badge-model model-medium">Gemini 3.8 Flash (Medium)</span></td>
+              <td>業務要望からの質問抽出・仕様骨子整理</td>
+            </tr>
+            <tr>
+              <td>Step 2</td>
+              <td>スコープ境界 & 受入基準(AC)確定</td>
+              <td><span class="badge-model model-high">Gemini 3.8 Flash (High)</span></td>
+              <td>In/Out of Scope・排他/時間ガード・AC-01採番</td>
+            </tr>
+            <tr>
+              <td>Step 3</td>
+              <td>Archify 構成図・フロー図生成</td>
+              <td><span class="badge-model model-high">Gemini 3.8 Flash (High)</span></td>
+              <td>コンポーネント・処理フローのSVG視覚化（認識ズレ防止）</td>
+            </tr>
+            <tr>
+              <td>Step 4</td>
+              <td>極小タスク計画</td>
+              <td><span class="badge-model model-medium">Gemini 3.8 Flash (Medium)</span></td>
+              <td>仕様・Tree-shaking防止に紐づくタスクリスト（/plan）</td>
+            </tr>
+            <tr>
+              <td>Step 5</td>
+              <td>自律実装 & 決定論的検証ループ</td>
+              <td><span class="badge-model model-high">Gemini 3.8 Flash (High)</span></td>
+              <td>型検査・テスト・空ファイル検証・自律修正ループ</td>
+            </tr>
+            <tr>
+              <td>Step 6</td>
+              <td>動作確認 & 仕様整合照合</td>
+              <td><span class="badge-model model-low">Gemini 3.8 Flash (Low)</span></td>
+              <td>画面/実行確認案内・ACとの1対1照合完了判定</td>
+            </tr>
+            <tr>
+              <td>仕様同期</td>
+              <td>追加・変更ループ（仕様ドリブン）</td>
+              <td><span class="badge-model model-high">Gemini 3.8 Flash (High)</span></td>
+              <td>実装先行を防止し spec.md → 図面 → 実装の順に同期更新</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 進捗状況バー -->
+    <div class="progress-card">
+      <div class="progress-header">
+        <span class="progress-title">📌 開発工程の進捗状況</span>
+        <span id="progressStats" class="progress-stats">完了: 0 / 7 ステップ (0%)</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div id="progressBarFill" class="progress-bar-fill"></div>
+      </div>
+      <div class="progress-actions">
+        <div class="dir-sync-panel">
+          <span id="dirStatusBadge" class="dir-status-badge">📁 プロジェクトフォルダ: 未連携 (ブラウザ内保存)</span>
+          <button type="button" class="btn-sync-action primary" onclick="connectProjectDirectory()">
+            📁 フォルダを連携
+          </button>
+          <button type="button" id="btnSaveToFile" class="btn-sync-action" onclick="saveProgressToFile(true)" style="display:none;">
+            💾 フォルダに保存
+          </button>
+          <button type="button" id="btnLoadFromFile" class="btn-sync-action" onclick="loadProgressFromFile()" style="display:none;">
+            📂 フォルダから再読込
+          </button>
+          <button type="button" class="btn-sync-action" onclick="exportProgressJson()" title="JSONファイルとしてダウンロード保存">
+            ⬇️ エクスポート
+          </button>
+          <button type="button" class="btn-sync-action" onclick="triggerImportJson()" title="JSONファイルから復元">
+            ⬆️ インポート
+          </button>
+          <input type="file" id="importJsonInput" accept=".json" style="display: none;" onchange="handleImportJsonFile(event)">
+        </div>
+        <div>
+          <button class="btn-reset-progress" onclick="resetProgress()">進捗をリセット</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 0: 逆生成 (オプション) -->
+    <div id="stepCard-step0" class="card" style="border-left: 4px solid var(--text-muted);">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-left">
+          <div class="card-top">
+            <span class="step-pill step-pill-secondary">Step 0 (既存資産がある場合)</span>
+            <span class="badge-model model-high">指定モデル: Gemini 3.8 Flash (High)</span>
+            <label class="step-check-label" id="label-step0" onclick="event.stopPropagation()">
+              <input type="checkbox" id="chk-step0" onchange="toggleStepComplete('step0')">
+              <span>完了</span>
+            </label>
+          </div>
+          <h2>既存コード・スプレッドシートからの仕様逆生成</h2>
+        </div>
+        <div class="card-toggle-icon">▼</div>
+      </div>
+      <div class="card-body">
+        <p id="desc0" class="explanation">既存の手書きコードやシート構造を渡して、最新の仕様書（spec.md）と処理フロー図（Archify HTML）を自動リバースエンジニアリングします。</p>
+
+        <!-- Step 0 入力フォーム -->
+        <div style="background: rgba(15, 23, 42, 0.45); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+          <div class="input-group">
+            <label for="cfgLegacyAssets" style="margin-bottom: 0.35rem;">
+              <span>既存資産の入力（コード・シート構造・業務フロー）</span>
+              <span style="font-size:0.75rem; color:var(--text-muted);">※入力後「確定」でプロンプトに即反映</span>
+            </label>
+            <textarea id="cfgLegacyAssets" rows="5" placeholder="【入力例】&#10;・スプレッドシートの列構成: A列: 日時, B列: 顧客名, C列: 回答内容&#10;・現状の処理フロー: フォーム送信時にトリガー起動し、メール通知&#10;・既存コード（gs/js/py等）があればここに直接貼り付け&#10;※「ファイルを選択」「フォルダを選択」ボタンから自動読み込み・パス指定も可能です"></textarea>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+              <button type="button" class="btn-sync-action" onclick="handleSelectLegacyFile()" title="PC上の既存コードファイルを選択して内容を挿入">
+                📄 ファイルを選択
+              </button>
+              <button type="button" class="btn-sync-action" onclick="handleSelectLegacyFolder()" title="既存資産フォルダのツリー一覧またはパスを挿入">
+                📁 フォルダを選択
+              </button>
+              <input type="file" id="legacyFileInput" style="display: none;" onchange="handleLegacyFileInputChange(event)">
+              <input type="file" id="legacyFolderInput" style="display: none;" webkitdirectory directory onchange="handleLegacyFolderInputChange(event)">
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn-clear-config" onclick="clearLegacyAssets()">クリア</button>
+              <button class="btn-apply-config" style="padding: 0.45rem 1.2rem; font-size: 0.85rem;" onclick="applyLegacyAssets()">
+                確定してプロンプトに反映
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <button class="copy-btn" onclick="copyPrompt('p0')">コピー</button>
+          <div id="p0" class="prompt-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1 -->
+    <div id="stepCard-step1" class="card">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-left">
+          <div class="card-top">
+            <span class="step-pill">Step 1</span>
+            <span class="badge-model model-medium">指定モデル: Gemini 3.8 Flash (Medium)</span>
+            <label class="step-check-label" id="label-step1" onclick="event.stopPropagation()">
+              <input type="checkbox" id="chk-step1" onchange="toggleStepComplete('step1')">
+              <span>完了</span>
+            </label>
+          </div>
+          <h2>要件ヒアリング & 仕様草案の作成</h2>
+        </div>
+        <div class="card-toggle-icon">▼</div>
+      </div>
+      <div class="card-body">
+        <p id="desc1" class="explanation">プロジェクトの概要を入力して送信します。AIが不明点を質問し、仕様草案を作成します。</p>
+        <div class="prompt-box">
+          <button class="copy-btn" onclick="copyPrompt('p1')">コピー</button>
+          <div id="p1" class="prompt-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div id="stepCard-step2" class="card">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-left">
+          <div class="card-top">
+            <span class="step-pill">Step 2</span>
+            <span class="badge-model model-high">指定モデル: Gemini 3.8 Flash (High)</span>
+            <label class="step-check-label" id="label-step2" onclick="event.stopPropagation()">
+              <input type="checkbox" id="chk-step2" onchange="toggleStepComplete('step2')">
+              <span>完了</span>
+            </label>
+          </div>
+          <h2>スコープ境界と決定論的受け入れ基準の確定</h2>
+        </div>
+        <div class="card-toggle-icon">▼</div>
+      </div>
+      <div class="card-body">
+        <p id="desc2" class="explanation">AIの質問に回答し、実装する範囲（In Scope）とやらない範囲（Out of Scope）を固定します。</p>
+        <div class="prompt-box">
+          <button class="copy-btn" onclick="copyPrompt('p2')">コピー</button>
+          <div id="p2" class="prompt-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Archify -->
+    <div id="stepCard-step3" class="card">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-left">
+          <div class="card-top">
+            <span class="step-pill">Step 3</span>
+            <span class="badge-model model-high">指定モデル: Gemini 3.8 Flash (High)</span>
+            <label class="step-check-label" id="label-step3" onclick="event.stopPropagation()">
+              <input type="checkbox" id="chk-step3" onchange="toggleStepComplete('step3')">
+              <span>完了</span>
+            </label>
+          </div>
+          <h2>Archifyによるシステム構成・処理フロー図の視覚化</h2>
+        </div>
+        <div class="card-toggle-icon">▼</div>
+      </div>
+      <div class="card-body">
+        <p id="desc3" class="explanation">確定した仕様書からインタラクティブな構成図（HTML）を生成し、実装前に認識を一致させます。</p>
+        <div class="prompt-box">
+          <button class="copy-btn" onclick="copyPrompt('p3')">コピー</button>
+          <div id="p3" class="prompt-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div id="stepCard-step4" class="card">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-left">
+          <div class="card-top">
+            <span class="step-pill">Step 4</span>
+            <span class="badge-model model-medium">指定モデル: Gemini 3.8 Flash (Medium)</span>
+            <label class="step-check-label" id="label-step4" onclick="event.stopPropagation()">
+              <input type="checkbox" id="chk-step4" onchange="toggleStepComplete('step4')">
+              <span>完了</span>
+            </label>
+          </div>
+          <h2>極小タスク計画の生成</h2>
+        </div>
+        <div class="card-toggle-icon">▼</div>
+      </div>
+      <div class="card-body">
+        <p id="desc4" class="explanation">確定した仕様書と構成図をもとに、検証条件（Stop Condition）が付いた実行タスク計画を作成させます。</p>
+        <div class="prompt-box">
+          <button class="copy-btn" onclick="copyPrompt('p4')">コピー</button>
+          <div id="p4" class="prompt-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div id="stepCard-step5" class="card">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-left">
+          <div class="card-top">
+            <span class="step-pill">Step 5</span>
+            <span class="badge-model model-high">指定モデル: Gemini 3.8 Flash (High)</span>
+            <label class="step-check-label" id="label-step5" onclick="event.stopPropagation()">
+              <input type="checkbox" id="chk-step5" onchange="toggleStepComplete('step5')">
+              <span>完了</span>
+            </label>
+          </div>
+          <h2>自律実装 & 決定論的検証ループ</h2>
+        </div>
+        <div class="card-toggle-icon">▼</div>
+      </div>
+      <div class="card-body">
+        <p id="desc5" class="explanation">AIがコード生成、型チェック、テスト、エラー時の自動修正（最大3回）を全自動で実行します。</p>
+        <div class="prompt-box">
+          <button class="copy-btn" onclick="copyPrompt('p5')">コピー</button>
+          <div id="p5" class="prompt-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div id="stepCard-step6" class="card">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-left">
+          <div class="card-top">
+            <span class="step-pill">Step 6</span>
+            <span class="badge-model model-low">指定モデル: Gemini 3.8 Flash (Low)</span>
+            <label class="step-check-label" id="label-step6" onclick="event.stopPropagation()">
+              <input type="checkbox" id="chk-step6" onchange="toggleStepComplete('step6')">
+              <span>完了</span>
+            </label>
+          </div>
+          <h2>動作確認と仕様整合チェック</h2>
+        </div>
+        <div class="card-toggle-icon">▼</div>
+      </div>
+      <div class="card-body">
+        <p id="desc6" class="explanation">仕様通りに仕上がっているか照合し、動作確認やデプロイ手順を案内させます。</p>
+        <div class="prompt-box">
+          <button class="copy-btn" onclick="copyPrompt('p6')">コピー</button>
+          <div id="p6" class="prompt-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 仕様同期・追加変更ループ -->
+    <div id="stepCard-stepSync" class="card" style="border-left: 4px solid var(--warning);">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-left">
+          <div class="card-top">
+            <span class="step-pill step-pill-warning">仕様同期ループ (仕様変更・追加時)</span>
+            <span class="badge-model model-high">指定モデル: Gemini 3.8 Flash (High)</span>
+            <label class="step-check-label" id="label-stepSync" onclick="event.stopPropagation()">
+              <input type="checkbox" id="chk-stepSync" onchange="toggleStepComplete('stepSync')">
+              <span>完了</span>
+            </label>
+          </div>
+          <h2>仕様変更・追加機能の同期更新ループ</h2>
+        </div>
+        <div class="card-toggle-icon">▼</div>
+      </div>
+      <div class="card-body">
+        <p id="descSync" class="explanation">実装後に変更要望が出た際、コード直接編集による仕様乖離（Drift）を防ぐため、必ず「spec.md → Archify図 → テスト/実装」の順で同期更新させます。</p>
+
+        <!-- 仕様同期 要件入力フォーム -->
+        <div style="background: rgba(15, 23, 42, 0.45); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+          <div class="input-group">
+            <label for="cfgSyncRequirements" style="margin-bottom: 0.35rem;">
+              <span>追加・変更・エラー修正したい要件の入力</span>
+              <span style="font-size:0.75rem; color:var(--text-muted);">※入力後「確定」でプロンプトに即時反映</span>
+            </label>
+            <textarea id="cfgSyncRequirements" rows="4" placeholder="【入力例】&#10;・集計結果をSlack（Incoming Webhook）にも通知したい&#10;・エラー発生時にリトライを最大3回行うよう変更したい&#10;・発生しているエラー内容 / スタックトレースの修正依頼"></textarea>
+          </div>
+          <div style="display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; margin-top: 0.75rem;">
+            <button class="btn-clear-config" onclick="clearSyncRequirements()">クリア</button>
+            <button class="btn-apply-config" style="padding: 0.45rem 1.2rem; font-size: 0.85rem;" onclick="applySyncRequirements()">
+              確定してプロンプトに反映
+            </button>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <button class="copy-btn" onclick="copyPrompt('pSync')">コピー</button>
+          <div id="pSync" class="prompt-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GASデプロイ手順 (固定デプロイID運用) -->
+    <div id="stepCard-gasDeploy" class="card open" style="border-left: 4px solid var(--accent);">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-left">
+          <div class="card-top">
+            <span class="step-pill">デプロイガイド</span>
+            <span class="badge-model model-medium">clasp / 固定デプロイID</span>
+          </div>
+          <h2>GASデプロイ手順</h2>
+        </div>
+        <div class="card-toggle-icon">▼</div>
+      </div>
+      <div class="card-body">
+        <div class="deploy-guide-content">
+          <div class="deploy-alert">
+            <h4>⚠️ GAS構文エラー（ParseError: Unexpected token ;）の恒久防止</h4>
+            <p style="margin-bottom: 0.35rem;">Google Apps Script (GAS) の静的JavaScriptパーサーはES2022のクラスフィールド構文（<code class="deploy-inline-code">class { props; }</code>）に対応しておらず、未変換のままPushすると構文解析エラーが発生します。</p>
+            <p><strong>恒久対策:</strong> <code class="deploy-inline-code">esbuild.config.mjs</code> のビルドターゲットを必ず <code class="deploy-inline-code">target: 'es2019'</code> に指定してください。クラスフィールドがコンストラクタ初期化（<code class="deploy-inline-code">constructor() { this.props = ...; }</code>）に自動トランスパイルされ、エラーを恒久的に防ぐことができます。</p>
+          </div>
+          <p style="margin-bottom: 0.75rem;">本プロジェクトでは <code class="deploy-inline-code">clasp</code> を用いた固定デプロイID運用を採用しています。</p>
+          <ol class="deploy-step-list">
+            <li class="deploy-step-item">
+              <div class="deploy-step-title">
+                <span class="deploy-step-number">1</span>
+                <span>初回セットアップ</span>
+              </div>
+              <div class="deploy-step-desc">
+                <ul>
+                  <li><code class="deploy-inline-code">.clasp.json.sample</code> を参考に <code class="deploy-inline-code">.clasp.json</code> を作成し、自身のスクリプトIDを設定します。</li>
+                  <li><code class="deploy-inline-code">npx clasp login</code> でGoogleアカウントに認証します。</li>
+                </ul>
+              </div>
+            </li>
+            <li class="deploy-step-item">
+              <div class="deploy-step-title">
+                <span class="deploy-step-number">2</span>
+                <span>スクリプトプロパティの設定</span>
+              </div>
+              <div class="deploy-step-desc">
+                <ul>
+                  <li><code class="deploy-inline-code">SPREADSHEET_ID</code>: データ保存用GoogleスプレッドシートID（未設定でも内蔵JISデータで稼働）</li>
+                  <li><code class="deploy-inline-code">OUTPUT_FOLDER_ID</code>: 出力先ドライブフォルダID</li>
+                  <li><code class="deploy-inline-code">ENV</code>: <code class="deploy-inline-code">development</code> または <code class="deploy-inline-code">production</code></li>
+                </ul>
+              </div>
+            </li>
+            <li class="deploy-step-item">
+              <div class="deploy-step-title">
+                <span class="deploy-step-number">3</span>
+                <span>環境設定ファイル（<code class="deploy-inline-code">.env.development</code>）の準備</span>
+              </div>
+              <div class="deploy-step-desc">
+                <ul>
+                  <li>ルートディレクトリに <code class="deploy-inline-code">.env.development</code> を作成します（<code class="deploy-inline-code">.env.development.sample</code> を複製）：
+                    <pre class="deploy-code-block"># .env.development
+DEPLOYMENT_ID=</pre>
+                  </li>
+                </ul>
+              </div>
+            </li>
+            <li class="deploy-step-item">
+              <div class="deploy-step-title">
+                <span class="deploy-step-number">4</span>
+                <span>初回デプロイとID取得</span>
+              </div>
+              <div class="deploy-step-desc">
+                <ul>
+                  <li>固定デプロイIDが未設定の状態で初回デプロイを実行します：
+                    <pre class="deploy-code-block">npm run deploy:gas:dev</pre>
+                  </li>
+                  <li>初回は新規デプロイが作成され、ターミナル上に発行された <code class="deploy-inline-code">Deployment ID</code>（例: <code class="deploy-inline-code">AKfycbx...</code>）が表示されます。</li>
+                  <li>発行されたIDを <code class="deploy-inline-code">.env.development</code> に記載します：
+                    <pre class="deploy-code-block">DEPLOYMENT_ID=AKfycbx...（取得したデプロイID）</pre>
+                  </li>
+                </ul>
+              </div>
+            </li>
+            <li class="deploy-step-item">
+              <div class="deploy-step-title">
+                <span class="deploy-step-number">5</span>
+                <span>継続デプロイの実行</span>
+              </div>
+              <div class="deploy-step-desc">
+                <ul>
+                  <li>以降は同じコマンドを実行するだけで、<code class="deploy-inline-code">.env.development</code> に指定されたデプロイIDに対して上書きデプロイが行われ、Web App の URL が固定されます：
+                    <pre class="deploy-code-block"># 開発環境への上書きデプロイ
+npm run deploy:gas:dev
+
+# 本番環境へのデプロイ（.env.production の DEPLOYMENT_ID を使用）
+npm run deploy:gas:prod</pre>
+                  </li>
+                </ul>
+              </div>
+            </li>
+            <li class="deploy-step-item">
+              <div class="deploy-step-title">
+                <span class="deploy-step-number">6</span>
+                <span>Web App URLの確認と動作検証</span>
+              </div>
+              <div class="deploy-step-desc">
+                <ul>
+                  <li>デプロイ完了時に出力される Web App URL（または <code class="deploy-inline-code">npx clasp deployments</code> で確認）へアクセスします。</li>
+                  <li>ブラウザで Web UI 画面が表示されるか確認します（<code class="deploy-inline-code">doGet</code> の疎通）。</li>
+                  <li>Autodesk Fusion アドインや外部クライアントから Webhook / JSON POST（<code class="deploy-inline-code">doPost</code>）が正常に応答するか検証します。</li>
+                </ul>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="recipeModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🆕 新しいプロジェクトのレシピ選択</h2>
+        <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+        開始したい開発案件のアーキテクチャを選択してください。選択したレシピに合わせて Step 0〜6 の定型プロンプトが最適化されます。
+      </p>
+      <div class="recipe-grid">
+        <!-- Recipe 1 -->
+        <div id="card-gas" class="recipe-card active" onclick="selectRecipe('gas')">
+          <div class="recipe-title">
+            <span>Google Apps Script (V8) + TS</span>
+            <span class="badge-recommend">推奨</span>
+          </div>
+          <div class="recipe-desc">
+            スプレッドシート自動化、バッチ処理、6分制限・LockService排他制御、スクリプトプロパティ標準化（出力フォルダ/シートID）、esbuild Tree-shaking空ファイル化防止 & GASパーサー構文エラー恒久防止（es2019ターゲット）ガード付き。distビルド出力、開発・本番の分離と固定WebURLデプロイ。
+          </div>
+        </div>
+
+        <!-- Recipe 2 -->
+        <div id="card-web" class="recipe-card" onclick="selectRecipe('web')">
+          <div class="recipe-title">
+            <span>Web Full-Stack</span>
+          </div>
+          <div class="recipe-desc">
+            React 19 + Express。SPAダッシュボード、REST API、データベース連携、レスポンシブUI。AC採番と仕様同期ループ対応。
+          </div>
+        </div>
+
+        <!-- Recipe 3 -->
+        <div id="card-python" class="recipe-card" onclick="selectRecipe('python')">
+          <div class="recipe-title">
+            <span>Python Automation & CLI</span>
+          </div>
+          <div class="recipe-desc">
+            データ集計・加工、スクレイピング、CLIツール。mypy型チェック・pytestによる自律検証。AC採番と仕様同期対応。
+          </div>
+        </div>
+
+        <!-- Recipe 4 -->
+        <div id="card-blank" class="recipe-card" onclick="selectRecipe('blank')">
+          <div class="recipe-title">
+            <span>完全スクラッチ (Blank)</span>
+          </div>
+          <div class="recipe-desc">
+            白紙から独自の設計・言語スタック・業務要件を直接入力して自由に進める汎用SDD。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">プロンプトをクリップボードにコピーしました！</div>
+
+  <script>
+    const RECIPES = {
+      gas: {
+        title: "🏷️ 選択中レシピ: Google Apps Script (V8) + TypeScript (clasp)",
+        desc: "スプレッドシート自動化、バッチ処理、6分制限・LockService排他制御、スクリプトプロパティ標準化（出力フォルダ/シートID）、esbuild Tree-shaking空ファイル化防止 & GASパーサー構文エラー恒久防止（es2019ターゲット）ガード付き。distビルド出力、開発・本番の分離と固定WebURLデプロイ。",
+        defaultSummary: "顧客アンケートスプレッドシートの集計・日次バッチ・Gmail通知",
+        defaultUser: "社内事務スタッフ",
+        prompts: {
+          p0: `【Step 0: 既存コード/シートからの仕様逆生成】
+プロジェクト種別: Google Apps Script (V8) + TypeScript (clasp)
+機能スラグ名: {feature}
+既存資産の情報:
+- 既存コード（gs/js）またはスプレッドシートの構造・現状の運用フローを解析してください。
+{legacyAssets}
+
+指示:
+1. 既存資産を深層解析し、現状の仕様書（\`specs/{feature}/spec.md\`）をリバースエンジニアリングして作成してください。
+2. 処理フローおよびコンポーネント構成をArchify形式のHTML（\`specs/{feature}/architecture.html\`）として視覚化してください。
+3. 現状の潜在的な課題（6分タイムアウト危険性、排他制御の欠如、型安全性の不足）を特定し、改善点リストを提示してください。`,
+          p1: `【Step 1: 仕様作成】
+プロジェクト種別: Google Apps Script (V8) + TypeScript (clasp)
+作りたい機能の概要: {summary}
+対象ユーザー: {user}
+アーキテクチャ要件:
+- TypeScriptで記述し、ビルド生成物は \`dist\` ディレクトリに出力して \`dist\` をGASにPushする構成とすること。
+- 【GAS構文エラー恒久防止】: esbuild等のバンドラ設定でビルドターゲットを必ず \`es2019\` とし、GAS静的パーサーが非対応のES2022クラスフィールド構文（\`class { props; }\`）による \`Syntax error: ParseError: Unexpected token ;\` をコンストラクタ初期化へのトランスパイルによって恒久防止すること。
+- 開発環境（dev）と本番環境（prod）を分離してデプロイ可能とし、それぞれのデプロイIDを固定化してアプリ更新時もWebURLが変わらない設計とすること。
+- デプロイ用スクリプトとして \`package.json\` に \`npm run deploy:gas:dev\`（開発用）、\`npm run deploy:gas:prod\`（本番用）、および \`npm run deploy:gas\`（デフォルト）を整備し、ワンコマンドで安全にビルド・デプロイできる構成とすること。
+- 排他制御（LockService）およびGASの6分タイムアウト対策（バッチ分割・次回トリガー引き継ぎ）を考慮すること。
+- 【スクリプトプロパティ標準】:
+  - アプリから生成・出力するファイルの保存先GoogleドライブフォルダIDは、スクリプトプロパティ（\`OUTPUT_FOLDER_ID\`）経由で取得すること（ハードコード禁止）。
+  - データストアとしてスプレッドシートを利用する場合は、対象スプレッドシートIDをスクリプトプロパティ（\`SPREADSHEET_ID\`）経由で取得すること（スタンドアロン／単独デプロイを標準とし、\`SpreadsheetApp.getActiveSpreadsheet()\` への暗黙依存を避ける）。
+- 【スプレッドシート自動初期化標準】:
+  - アプリで使用するシートは初回起動時に対象シートの存在確認を行い、存在しない場合は自動生成する構成とすること（手動作成不要・冪等設計）。
+  - 自動生成時、1行目にヘッダー列名を自動書き込みし、1行目を固定（\`freezeRows(1)\`）、さらに背景色・太字装飾を適用すること。
+
+上記をもとに、不明点を3〜5問質問して仕様を明確化し、\`specs/{feature}/spec.md\` の草案を作成してください。`,
+          p2: `【Step 2: 仕様確定】
+質問への回答:
+1. スプレッドシート構造・初期化仕様:
+   - 使用シート名とヘッダー列定義
+   - 初回起動時の自動シート作成、1行目ヘッダー投入、1行目固定（\`freezeRows(1)\`）、背景色・太字装飾の適用
+2. 実行制限・排他制御ガード: 
+   - 6分制限を意識した一括取得・一括更新（getValues/setValues）
+   - 同時実行時のデータ破損防止のための排他制御（LockService.getScriptLock のタイムアウト30秒待機等）
+   - 処理時間5分経過時の安全な中断と次回トリガー引き継ぎ要否
+3. デプロイ管理・環境設定: 
+   - \`dist/\` へのビルド出力、dev/prodそれぞれのclasp設定および固定デプロイID構成（\`npm run deploy:gas:dev\` / \`npm run deploy:gas:prod\`）
+   - スクリプトプロパティ設計（出力先フォルダID: \`OUTPUT_FOLDER_ID\`, データストア用シートID: \`SPREADSHEET_ID\` 等）
+4. 対象外 (Out of Scope): 今回対象としない例外フローや外部連携
+
+これらを反映して仕様書の「対象（In Scope）」「対象外（Out of Scope）」および「決定論的受け入れ基準（AC）」を確定させてください。
+※受け入れ基準には必ず「AC-01」「AC-02」のように一意なIDを採番してください。`,
+          p3: `【Step 3: 構成図・フロー図の視覚化】
+確定した \`specs/{feature}/spec.md\` に基づき、スプレッドシート操作・バッチ処理・LockService排他制御・スクリプトプロパティ連携（出力先Driveフォルダ/対象スプレッドシート）・ビルド＆デプロイ分離構成（dist出力 / dev・prod固定デプロイID）のフロー図をArchify形式のインタラクティブHTML（\`specs/{feature}/architecture.html\`）として生成してください。
+データフロー、排他制御、GAS実行制限対策、およびビルド成果物の流れを視覚的に探索・確認できるように出力してください。`,
+          p4: `【Step 4: 計画作成】
+確定した仕様書および構成図に基づき、極小タスク計画を作成してください。
+【必須検証条件】:
+- TypeScript型定義、バッチ処理ロジック、distビルド設定、clasp固定デプロイ構成、単体テスト。
+- \`package.json\` へのGAS標準デプロイコマンド（\`deploy:gas:dev\`, \`deploy:gas:prod\`, \`deploy:gas\`）の定義。
+- スクリプトプロパティ（\`OUTPUT_FOLDER_ID\`, \`SPREADSHEET_ID\` 等）の取得ユーティリティおよび未設定時の明確なエラーハンドリング実装。
+- シート自動初期化ロジック（存在確認・自動作成・1行目ヘッダー投入・\`setFrozenRows(1)\`・装飾）および冪等性単体テスト。
+- esbuild等のバンドラ設定において、エラーが発生するv0.25系を避け最新安定版（^0.28系等）を採用し、ビルドターゲットを \`es2019\` に指定してGASパーサー非対応構文（クラスフィールド等による \`Syntax error: ParseError: Unexpected token ;\`）を恒久防止すること。またGASのトップレベル関数（doGet, doPost, トリガー関数）がTree-shakingで削除されて空ファイルになる事故を防止する設定を含めること。
+- ビルド後の \`dist/\` 内ファイルが空でないこと（ファイルサイズ > 0 & エントリポイント関数が存在すること）およびクラスフィールド構文がコンストラクタ初期化に変換されていることをStop Conditionに定義すること。`,
+          p5: `【Step 5: 実装と検証ループ】
+計画のタスクに従い実装を開始してください。
+必ず各タスクで以下の決定論的検証ループを自律実行してください:
+1. TypeScript型検査（\`tsc --noEmit\`）
+2. 単体テスト実行（各テストに AC-01 等のIDを紐付け）
+3. ビルド実行および空ファイル・構文検証（\`dist/\` 内の出力ファイルが空でなく、エントリポイント関数が出力されていること、および \`target: 'es2019'\` でクラスフィールド構文が残存していないこと）
+エラーが発生した場合は最大3回まで自律修正ループを回し、すべて合格した状態で完了報告してください。`,
+          p6: `【Step 6: 最終確認】
+実装が仕様書の「受け入れ基準（AC-01, AC-02...）」をすべて満たしているか1対1で照合チェック表を作成してください。
+環境別デプロイコマンド（開発用: \`npm run deploy:gas:dev\` / 本番用: \`npm run deploy:gas:prod\`）による固定デプロイID更新手順、スクリプトプロパティ（\`OUTPUT_FOLDER_ID\`, \`SPREADSHEET_ID\`）の設定方法、初回実行時のシート自動初期化（ヘッダー行作成・固定・装飾）を含めた動作確認方法、およびREADME.mdのデプロイガイド案内を提示してください。`,
+          pSync: `【仕様同期・追加変更ループ】
+機能スラグ名: {feature}
+追加・変更したい要件:
+{syncRequirements}
+
+【必須同期ルール】:
+コードを先に修正せず、以下の順序で必ず同期更新してください:
+1. \`specs/{feature}/spec.md\` の差分更新（In Scope / Out of Scope / 新規受入基準 AC-XX の追加）
+2. \`specs/{feature}/architecture.html\` のフロー図・構成図の更新
+3. 新規ACに対応するテストコード作成・実装コードの修正
+4. 決定論的検証ループ（型検査・テスト・空ファイル検証）の再実行と合格確認`
+        }
+      },
+      web: {
+        title: "🏷️ 選択中レシピ: Web Full-Stack (React 19 + Express)",
+        desc: "SPAダッシュボード、REST API、データベース連携、レスポンシブUI（PC/タブレット）。AC採番と仕様同期ループ対応。",
+        defaultSummary: "製造現場向け作業日報ダッシュボード。PC・タブレット対応、複数テーマ管理、JSTタイムスタンプ記録、未完了テーマ継続表示",
+        defaultUser: "現場作業員および管理者",
+        prompts: {
+          p0: `【Step 0: 既存コード/UIからの仕様逆生成】
+プロジェクト種別: Web Full-Stack (React 19 + Express)
+機能スラグ名: {feature}
+既存資産の情報:
+{legacyAssets}
+
+指示:
+1. 既存の資産を解析し、現状の仕様書（\`specs/{feature}/spec.md\`）をリバースエンジニアリングして作成してください。
+2. コンポーネントツリーとデータフローをArchify形式のHTML（\`specs/{feature}/architecture.html\`）として視覚化してください。
+3. 潜在的なリファクタリング対象や型安全性の不足箇所を整理してください。`,
+          p1: `【Step 1: 仕様作成】
+プロジェクト種別: Web Full-Stack (React 19 + Express)
+作りたい機能の概要: {summary}
+対象ユーザー: {user}
+
+上記をもとに、不明点を3〜5問質問して仕様を明確化し、\`specs/{feature}/spec.md\` の草案を作成してください。`,
+          p2: `【Step 2: 仕様確定】
+質問への回答:
+1. データ保存: [ローカルストレージ / IndexedDB / SQLite / API経由]
+2. レスポンシブ対応: PCのマウス操作およびタブレットでのタッチ操作に適したレイアウト
+3. 業務ルール: [例: JST YYYY/MM/DD HH:MM:SS タイムスタンプ、未完了テーマの翌日自動引継ぎ]
+4. 対象外 (Out of Scope): 複雑な外部ERP連携や不要な権限管理は除外
+
+これらを反映して仕様書の「対象（In Scope）」「対象外（Out of Scope）」および「決定論的受け入れ基準（AC）」を確定させてください。
+※受け入れ基準には必ず「AC-01」「AC-02」のように一意なIDを採番してください。`,
+          p3: `【Step 3: 構成図・フロー図の視覚化】
+確定した \`specs/{feature}/spec.md\` に基づき、UIコンポーネント階層、状態管理、API/ストレージ連携の全体構成図・処理フロー図をArchify形式のインタラクティブHTML（\`specs/{feature}/architecture.html\`）として生成してください。
+データフローと状態遷移を視覚的に探索・確認できるように出力してください。`,
+          p4: `【Step 4: 計画作成】
+確定した仕様書および構成図に基づき、型定義・コンポーネント実装・状態管理・テストを含む極小タスク計画を作成してください。
+各タスクに対応する受け入れ基準ID（AC-01等）を明記してください。`,
+          p5: `【Step 5: 実装と検証ループ】
+計画のタスクに従い実装を開始してください。
+必ず各タスクで「静的型検査」および「コンポーネント/単体テスト（ACと1対1照合）」を行い、エラーがある場合は最大3回まで自己修正ループを回して解決してください。`,
+          p6: `【Step 6: 最終確認】
+実装が仕様書の「受け入れ基準（AC-01, AC-02...）」を満たしているか1対1照合チェック表を作成し、ローカルサーバーを起動してブラウザで確認できるURLを提示してください。`,
+          pSync: `【仕様同期・追加変更ループ】
+機能スラグ名: {feature}
+追加・変更したい要件:
+{syncRequirements}
+
+【必須同期ルール】:
+コードを先に修正せず、以下の順序で必ず同期更新してください:
+1. \`specs/{feature}/spec.md\` の差分更新（In Scope / Out of Scope / 新規受入基準 AC-XX の追加）
+2. \`specs/{feature}/architecture.html\` のフロー図・コンポーネント図の更新
+3. 新規ACに対応するテスト作成・実装の修正
+4. 静的型検査およびテストの再実行と全件合格確認`
+        }
+      },
+      python: {
+        title: "🏷️ 選択中レシピ: Python Automation & CLI",
+        desc: "データ集計・加工、スクレイピング、CLIツール。mypy型チェック・pytestによる自律検証。AC採番と仕様同期対応。",
+        defaultSummary: "CSVデータの一括集計・バリデーションおよびExcelレポート自動出力ツール",
+        defaultUser: "データ分析担当者",
+        prompts: {
+          p0: `【Step 0: 既存スクリプトからの仕様逆生成】
+プロジェクト種別: Python Automation & CLI
+機能スラグ名: {feature}
+既存スクリプト/データ形式:
+{legacyAssets}
+
+指示:
+1. 既存コードを解析し、データモデル・入出力契約を反映した仕様書（\`specs/{feature}/spec.md\`）を逆生成してください。
+2. データパイプライン処理フローをArchify形式のHTML（\`specs/{feature}/architecture.html\`）として視覚化してください。
+3. 型ヒントの欠如やエラー処理の脆弱性を特定してください。`,
+          p1: `【Step 1: 仕様作成】
+プロジェクト種別: Python Automation & CLI
+作りたい機能の概要: {summary}
+対象ユーザー: {user}
+
+上記をもとに、不明点を3〜5問質問して仕様を明確化し、\`specs/{feature}/spec.md\` の草案を作成してください。`,
+          p2: `【Step 2: 仕様確定】
+質問への回答:
+1. 入出力フォーマット: [CSV/Excel/JSON等の仕様]
+2. エラー処理: 不正レコード検知時のスキップ・ログ出力仕様
+3. 実行形式: CLIコマンドライン引数（argparse/click）
+4. 対象外 (Out of Scope): GUI画面やクラウド連携は除外
+
+これらを反映して仕様書の「対象（In Scope）」「対象外（Out of Scope）」および「決定論的受け入れ基準（AC）」を確定させてください。
+※受け入れ基準には必ず「AC-01」「AC-02」のように一意なIDを採番してください。`,
+          p3: `【Step 3: 構成図・フロー図の視覚化】
+確定した \`specs/{feature}/spec.md\` に基づき、データパイプライン処理フロー（入力→検証→加工→集計→出力）をArchify形式のインタラクティブHTML（\`specs/{feature}/architecture.html\`）として生成してください。`,
+          p4: `【Step 4: 計画作成】
+確定した仕様書に基づき、型ヒント付きデータモデル、集計関数、pytestテストケース（AC-01等のID対応）を含む極小タスク計画を作成してください。`,
+          p5: `【Step 5: 実装と検証ループ】
+計画のタスクに従い実装を開始してください。
+必ず「mypy による厳格な型チェック」および「pytest」を実行し、エラー時は自己修正ループ（上限3回）を回して全テストをパスさせてください。`,
+          p6: `【Step 6: 最終確認】
+仕様書の受け入れ基準（AC-01, AC-02...）を満たしているか照合チェック表を作成し、CLIの実行コマンド例とサンプルデータでの実行結果を提示してください。`,
+          pSync: `【仕様同期・追加変更ループ】
+機能スラグ名: {feature}
+追加・変更したい要件:
+{syncRequirements}
+
+【必須同期ルール】:
+コードを先に修正せず、以下の順序で必ず同期更新してください:
+1. \`specs/{feature}/spec.md\` の差分更新（In Scope / Out of Scope / 新規受入基準 AC-XX の追加）
+2. \`specs/{feature}/architecture.html\` のパイプライン図の更新
+3. 新規ACに対応するpytestテスト作成・実装修正
+4. mypy型チェックおよびpytestの再実行と合格確認`
+        }
+      },
+      blank: {
+        title: "🏷️ 選択中レシピ: 完全スクラッチ (Blank)",
+        desc: "白紙から独自の設計・言語スタック・業務要件を直接入力して自由に進める汎用SDD。",
+        defaultSummary: "独自のWebサービス・CLIツール・業務自動化スクリプト",
+        defaultUser: "社内チームメンバー",
+        prompts: {
+          p0: `【Step 0: 既存資産からの仕様逆生成】
+機能スラグ名: {feature}
+既存資産の情報:
+{legacyAssets}
+
+指示:
+1. 現状の仕様書（\`specs/{feature}/spec.md\`）をリバースエンジニアリングして作成してください。
+2. システム構成・処理フローをArchify形式のHTML（\`specs/{feature}/architecture.html\`）として視覚化してください。`,
+          p1: `【Step 1: 仕様作成】
+作りたい機能の概要: {summary}
+対象ユーザー: {user}
+使用言語・環境: [例: Node.js / Go / Rust / HTML+Vanilla CSS]
+
+上記をもとに、不明点を3〜5問質問して仕様を明確化し、\`specs/{feature}/spec.md\` の草案を作成してください。`,
+          p2: `【Step 2: 仕様確定】
+質問への回答:
+1. [回答1]
+2. [回答2]
+3. [回答3]
+4. 対象外 (Out of Scope): 今回対象外とする事項
+
+これらを反映して仕様書の「対象（In Scope）」「対象外（Out of Scope）」および「決定論的受け入れ基準（AC）」を確定させてください。
+※受け入れ基準には必ず「AC-01」「AC-02」のように一意なIDを採番してください。`,
+          p3: `【Step 3: 構成図・フロー図の視覚化】
+確定した \`specs/{feature}/spec.md\` に基づき、システムの全体構成図または処理フロー図をArchify形式のインタラクティブHTML（\`specs/{feature}/architecture.html\`）として生成してください。`,
+          p4: `【Step 4: 計画作成】
+確定した仕様書および構成図に基づき、決定論的検証（型検査・テスト・Stop Condition）を含む極小タスク計画を作成してください。各タスクにAC IDを紐付けてください。`,
+          p5: `【Step 5: 実装と検証ループ】
+計画のタスクに従い実装を開始してください。
+必ず各タスクで「静的解析（型チェック等）」「テスト実行」を行い、エラーがある場合は最大3回まで自己修正ループを回して解決してください。`,
+          p6: `【Step 6: 最終確認】
+実装が仕様書の「受け入れ基準（AC-01, AC-02...）」をすべて満たしているかチェック表で照合し、動作を確認できるURLまたはコマンドを提示してください。`,
+          pSync: `【仕様同期・追加変更ループ】
+機能スラグ名: {feature}
+追加・変更したい要件:
+{syncRequirements}
+
+【必須同期ルール】:
+コードを先に修正せず、以下の順序で必ず同期更新してください:
+1. \`specs/{feature}/spec.md\` の差分更新（In Scope / Out of Scope / 新規受入基準 AC-XX の追加）
+2. \`specs/{feature}/architecture.html\` の構成図・フロー図の更新
+3. 新規ACに対応するテスト作成・実装修正
+4. 静的解析およびテストの再実行と合格確認`
+        }
+      }
+    };
+
+    let activeRecipeKey = 'gas';
+
+    const CONFIG_KEYS = {
+      feature: 'sdd_cfg_feature',
+      summary: 'sdd_cfg_summary',
+      user: 'sdd_cfg_user',
+      legacyAssets: 'sdd_cfg_legacy_assets',
+      syncRequirements: 'sdd_cfg_sync_requirements'
+    };
+
+    function checkConfigValidity() {
+      const f = document.getElementById('cfgFeature').value.trim();
+      const s = document.getElementById('cfgSummary').value.trim();
+      const u = document.getElementById('cfgUser').value.trim();
+      const btn = document.getElementById('btnApplyConfig');
+      if (btn) {
+        btn.disabled = !(f.length > 0 && s.length > 0 && u.length > 0);
+      }
+    }
+
+    function handleConfigChange() {
+      checkConfigValidity();
+    }
+
+    function applyConfigInputs() {
+      const feature = document.getElementById('cfgFeature').value.trim();
+      const summary = document.getElementById('cfgSummary').value.trim();
+      const user = document.getElementById('cfgUser').value.trim();
+
+      if (!feature || !summary || !user) {
+        showToast('3つの項目をすべて入力してください！');
+        checkConfigValidity();
+        return;
+      }
+
+      localStorage.setItem(CONFIG_KEYS.feature, feature);
+      localStorage.setItem(CONFIG_KEYS.summary, summary);
+      localStorage.setItem(CONFIG_KEYS.user, user);
+
+      renderPrompts();
+      checkConfigValidity();
+      triggerFileAutoSave();
+      showToast('基本情報を確定し、プロンプトに反映しました！');
+    }
+
+    function applyLegacyAssets() {
+      const legacy = document.getElementById('cfgLegacyAssets').value.trim();
+      if (!legacy) {
+        showToast('既存資産の内容を入力してください！');
+        return;
+      }
+      localStorage.setItem(CONFIG_KEYS.legacyAssets, legacy);
+      renderPrompts();
+      triggerFileAutoSave();
+      showToast('既存資産をStep 0プロンプトに反映しました！');
+    }
+
+    function clearLegacyAssets() {
+      document.getElementById('cfgLegacyAssets').value = '';
+      localStorage.removeItem(CONFIG_KEYS.legacyAssets);
+      renderPrompts();
+      triggerFileAutoSave();
+      showToast('既存資産の入力をクリアしました！');
+    }
+
+    function applySyncRequirements() {
+      const syncEl = document.getElementById('cfgSyncRequirements');
+      const req = syncEl ? syncEl.value.trim() : '';
+      if (!req) {
+        showToast('追加・変更・エラー修正したい要件を入力してください！');
+        return;
+      }
+      localStorage.setItem(CONFIG_KEYS.syncRequirements, req);
+      renderPrompts();
+      triggerFileAutoSave();
+      showToast('要件を仕様同期プロンプトに反映しました！');
+    }
+
+    function clearSyncRequirements() {
+      const syncEl = document.getElementById('cfgSyncRequirements');
+      if (syncEl) syncEl.value = '';
+      localStorage.removeItem(CONFIG_KEYS.syncRequirements);
+      renderPrompts();
+      triggerFileAutoSave();
+      showToast('仕様同期の入力要件をクリアしました！');
+    }
+
+    function appendLegacyAssetContent(newText, label = '') {
+      const textarea = document.getElementById('cfgLegacyAssets');
+      if (!textarea) return;
+      const current = textarea.value.trim();
+      if (current) {
+        textarea.value = current + '\n\n' + newText;
+      } else {
+        textarea.value = newText;
+      }
+      localStorage.setItem(CONFIG_KEYS.legacyAssets, textarea.value);
+      renderPrompts();
+      triggerFileAutoSave();
+      showToast(`${label ? label + ' を' : ''}既存資産欄に追加しました！`);
+    }
+
+    async function handleSelectLegacyFile() {
+      if (window.showOpenFilePicker) {
+        try {
+          const handles = await window.showOpenFilePicker({
+            multiple: true
+          });
+          if (!handles || handles.length === 0) return;
+
+          let combined = '';
+          for (const handle of handles) {
+            const file = await handle.getFile();
+            const text = await file.text();
+            combined += `【既存ファイル: ${file.name}】\n${text}\n\n`;
+          }
+          appendLegacyAssetContent(combined.trim(), `${handles.length}個のファイル`);
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.error('Legacy file pick error:', err);
+            document.getElementById('legacyFileInput').click();
+          }
+        }
+      } else {
+        document.getElementById('legacyFileInput').click();
+      }
+    }
+
+    function handleLegacyFileInputChange(e) {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      const readers = [];
+      let combined = '';
+      let loaded = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          combined += `【既存ファイル: ${file.name}】\n${event.target.result}\n\n`;
+          loaded++;
+          if (loaded === files.length) {
+            appendLegacyAssetContent(combined.trim(), `${files.length}個のファイル`);
+            e.target.value = '';
+          }
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    async function handleSelectLegacyFolder() {
+      if (window.showDirectoryPicker) {
+        try {
+          const dirHandle = await window.showDirectoryPicker();
+          if (!dirHandle) return;
+
+          const fileList = [];
+          const readDir = async (handle, currentPath = '') => {
+            for await (const entry of handle.values()) {
+              const fullPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+              if (entry.kind === 'file') {
+                fileList.push(fullPath);
+              } else if (entry.kind === 'directory') {
+                // node_modulesや.gitなど除外
+                if (!['.git', 'node_modules', '.gemini', 'dist', 'build'].includes(entry.name)) {
+                  await readDir(entry, fullPath);
+                }
+              }
+            }
+          };
+
+          await readDir(dirHandle);
+
+          let folderSummary = `【既存資産フォルダ構成: ${dirHandle.name}/】\n`;
+          folderSummary += fileList.map(p => `・${p}`).join('\n');
+          folderSummary += `\n\n※上記フォルダ配下のコード・資産をもとに仕様化してください。`;
+
+          appendLegacyAssetContent(folderSummary, `フォルダ「${dirHandle.name}」の構成`);
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.error('Legacy folder pick error:', err);
+            document.getElementById('legacyFolderInput').click();
+          }
+        }
+      } else {
+        document.getElementById('legacyFolderInput').click();
+      }
+    }
+
+    function handleLegacyFolderInputChange(e) {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      const list = [];
+      for (let i = 0; i < files.length; i++) {
+        const relPath = files[i].webkitRelativePath || files[i].name;
+        if (!relPath.includes('/node_modules/') && !relPath.includes('/.git/')) {
+          list.push(relPath);
+        }
+      }
+
+      let folderSummary = `【既存資産フォルダ構成】\n`;
+      folderSummary += list.map(p => `・${p}`).join('\n');
+      folderSummary += `\n\n※上記フォルダ配下のコード・資産をもとに仕様化してください。`;
+
+      appendLegacyAssetContent(folderSummary, 'フォルダ構成');
+      e.target.value = '';
+    }
+
+    function loadConfigInputs() {
+      const savedFeature = localStorage.getItem(CONFIG_KEYS.feature);
+      const savedSummary = localStorage.getItem(CONFIG_KEYS.summary);
+      const savedUser = localStorage.getItem(CONFIG_KEYS.user);
+      const savedLegacy = localStorage.getItem(CONFIG_KEYS.legacyAssets);
+      const savedSync = localStorage.getItem(CONFIG_KEYS.syncRequirements);
+
+      const data = RECIPES[activeRecipeKey];
+      document.getElementById('cfgFeature').value = savedFeature !== null ? savedFeature : 'daily-report';
+      document.getElementById('cfgSummary').value = savedSummary !== null ? savedSummary : data.defaultSummary;
+      document.getElementById('cfgUser').value = savedUser !== null ? savedUser : data.defaultUser;
+      if (savedLegacy !== null && document.getElementById('cfgLegacyAssets')) {
+        document.getElementById('cfgLegacyAssets').value = savedLegacy;
+      }
+      if (savedSync !== null && document.getElementById('cfgSyncRequirements')) {
+        document.getElementById('cfgSyncRequirements').value = savedSync;
+      }
+
+      checkConfigValidity();
+    }
+
+    function clearConfigInputs() {
+      document.getElementById('cfgFeature').value = '';
+      document.getElementById('cfgSummary').value = '';
+      document.getElementById('cfgUser').value = '';
+      localStorage.removeItem(CONFIG_KEYS.feature);
+      localStorage.removeItem(CONFIG_KEYS.summary);
+      localStorage.removeItem(CONFIG_KEYS.user);
+      checkConfigValidity();
+      renderPrompts();
+      showToast('入力フォームをクリアしました！');
+    }
+
+    function resetConfigInputs() {
+      localStorage.removeItem(CONFIG_KEYS.feature);
+      localStorage.removeItem(CONFIG_KEYS.summary);
+      localStorage.removeItem(CONFIG_KEYS.user);
+      loadConfigInputs();
+      applyConfigInputs();
+      showToast('入力項目を初期値にリセットし、反映しました！');
+    }
+
+    function renderPrompts() {
+      const data = RECIPES[activeRecipeKey];
+      const feature = document.getElementById('cfgFeature').value.trim() || 'daily-report';
+      const summary = document.getElementById('cfgSummary').value.trim() || data.defaultSummary;
+      const user = document.getElementById('cfgUser').value.trim() || data.defaultUser;
+      const legacy = document.getElementById('cfgLegacyAssets') ? document.getElementById('cfgLegacyAssets').value.trim() : '';
+      const legacyText = legacy || '[ここに既存コード、またはシートの列情報・業務フローのメモを貼り付け]';
+      const syncReq = document.getElementById('cfgSyncRequirements') ? document.getElementById('cfgSyncRequirements').value.trim() : '';
+      const defaultSyncText = activeRecipeKey === 'gas'
+        ? '[例: 集計結果をSlackにも通知したい / エラー発生時にリトライを3回行うよう変更したい]'
+        : activeRecipeKey === 'web'
+        ? '[例: 完了した日報をCSVエクスポートする機能を追加したい / モバイル表示時にヘッダーを折りたたみ式にしたい]'
+        : activeRecipeKey === 'python'
+        ? '[例: JSON出力フォーマットの追加 / 異常値検知時のアラートメール送信機能の追加]'
+        : '[追加したい機能や変更点、修正したいエラーの内容]';
+      const syncText = syncReq || defaultSyncText;
+
+      const fill = (tmpl) => {
+        return tmpl
+          .replace(/{feature}/g, feature)
+          .replace(/{summary}/g, summary)
+          .replace(/{user}/g, user)
+          .replace(/{legacyAssets}/g, legacyText)
+          .replace(/{syncRequirements}/g, syncText);
+      };
+
+      document.getElementById('currentRecipeTitle').innerText = data.title;
+      document.getElementById('currentRecipeDesc').innerText = data.desc;
+
+      document.getElementById('p0').innerText = fill(data.prompts.p0);
+      document.getElementById('p1').innerText = fill(data.prompts.p1);
+      document.getElementById('p2').innerText = fill(data.prompts.p2);
+      document.getElementById('p3').innerText = fill(data.prompts.p3);
+      document.getElementById('p4').innerText = fill(data.prompts.p4);
+      document.getElementById('p5').innerText = fill(data.prompts.p5);
+      document.getElementById('p6').innerText = fill(data.prompts.p6);
+      document.getElementById('pSync').innerText = fill(data.prompts.pSync);
+
+      ['gas', 'web', 'python', 'blank'].forEach(k => {
+        const el = document.getElementById('card-' + k);
+        if (el) el.classList.toggle('active', k === activeRecipeKey);
+      });
+    }
+
+    function setRecipe(key) {
+      activeRecipeKey = key;
+      const savedSummary = localStorage.getItem(CONFIG_KEYS.summary);
+      const savedUser = localStorage.getItem(CONFIG_KEYS.user);
+      if (!savedSummary) {
+        document.getElementById('cfgSummary').value = RECIPES[key].defaultSummary;
+      }
+      if (!savedUser) {
+        document.getElementById('cfgUser').value = RECIPES[key].defaultUser;
+      }
+      checkConfigValidity();
+      renderPrompts();
+    }
+
+    function selectRecipe(key) {
+      setRecipe(key);
+      closeModal();
+      showToast('レシピを切り替えました！');
+    }
+
+    function openModal() {
+      document.getElementById('recipeModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('recipeModal').classList.remove('open');
+    }
+
+    function closeModalOnOverlay(e) {
+      if (e.target.id === 'recipeModal') closeModal();
+    }
+
+    function copyPrompt(id) {
+      const text = document.getElementById(id).innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('プロンプトをクリップボードにコピーしました！');
+      });
+    }
+
+    function toggleCard(headerEl) {
+      const card = headerEl.closest('.card');
+      if (card) {
+        card.classList.toggle('open');
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // 進捗管理
+    const PROGRESS_STORAGE_KEY = 'sdd_guide_progress';
+    const PROGRESS_STEPS = ['step0', 'step1', 'step2', 'step3', 'step4', 'step5', 'step6', 'stepSync'];
+    const CORE_STEPS = ['step1', 'step2', 'step3', 'step4', 'step5', 'step6'];
+
+    function getProgressState() {
+      try {
+        const raw = localStorage.getItem(PROGRESS_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveProgressState(state) {
+      localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function toggleStepComplete(stepId) {
+      const chk = document.getElementById('chk-' + stepId);
+      const isChecked = chk ? chk.checked : false;
+      const state = getProgressState();
+      state[stepId] = isChecked;
+      saveProgressState(state);
+      updateStepUI(stepId, isChecked);
+      updateProgressUI();
+      triggerFileAutoSave();
+      if (isChecked) {
+        showToast('ステップを完了にしました！');
+      }
+    }
+
+    function updateStepUI(stepId, isChecked) {
+      const card = document.getElementById('stepCard-' + stepId);
+      const label = document.getElementById('label-' + stepId);
+      const chk = document.getElementById('chk-' + stepId);
+      if (chk) chk.checked = !!isChecked;
+      if (label) label.classList.toggle('checked', !!isChecked);
+      if (card) card.classList.toggle('completed', !!isChecked);
+    }
+
+    function updateProgressUI() {
+      const state = getProgressState();
+      const completedCoreCount = CORE_STEPS.filter(id => !!state[id]).length;
+      const totalCore = CORE_STEPS.length;
+      const percent = Math.round((completedCoreCount / totalCore) * 100);
+
+      const statsEl = document.getElementById('progressStats');
+      const fillEl = document.getElementById('progressBarFill');
+      if (statsEl) {
+        let text = `基本工程: ${completedCoreCount} / ${totalCore} 完了 (${percent}%)`;
+        if (state['step0']) text += ' + Step 0済';
+        if (state['stepSync']) text += ' + 仕様同期済';
+        statsEl.innerText = text;
+      }
+      if (fillEl) {
+        fillEl.style.width = percent + '%';
+      }
+    }
+
+    function loadProgress() {
+      const state = getProgressState();
+      PROGRESS_STEPS.forEach(id => {
+        updateStepUI(id, !!state[id]);
+      });
+      updateProgressUI();
+    }
+
+    function resetProgress() {
+      if (!confirm('進捗状況をリセットしてもよろしいですか？')) return;
+      localStorage.removeItem(PROGRESS_STORAGE_KEY);
+      PROGRESS_STEPS.forEach(id => {
+        updateStepUI(id, false);
+      });
+      updateProgressUI();
+      triggerFileAutoSave();
+      showToast('進捗状況をリセットしました！');
+    }
+
+    // --- プロジェクトルートフォルダ（File System Access API）連携 ---
+    const PROGRESS_FILE_NAME = '.sdd-progress.json';
+    let projectDirHandle = null;
+
+    function buildProgressData() {
+      return {
+        version: '1.0.0',
+        savedAt: new Date().toISOString(),
+        recipe: activeRecipeKey,
+        config: {
+          feature: document.getElementById('cfgFeature').value.trim(),
+          summary: document.getElementById('cfgSummary').value.trim(),
+          user: document.getElementById('cfgUser').value.trim(),
+          legacyAssets: document.getElementById('cfgLegacyAssets') ? document.getElementById('cfgLegacyAssets').value.trim() : '',
+          syncRequirements: document.getElementById('cfgSyncRequirements') ? document.getElementById('cfgSyncRequirements').value.trim() : ''
+        },
+        steps: getProgressState()
+      };
+    }
+
+    function restoreProgressData(data) {
+      if (!data) return;
+      if (data.recipe && RECIPES[data.recipe]) {
+        activeRecipeKey = data.recipe;
+      }
+      if (data.config) {
+        if (data.config.feature !== undefined) {
+          document.getElementById('cfgFeature').value = data.config.feature;
+          localStorage.setItem(CONFIG_KEYS.feature, data.config.feature);
+        }
+        if (data.config.summary !== undefined) {
+          document.getElementById('cfgSummary').value = data.config.summary;
+          localStorage.setItem(CONFIG_KEYS.summary, data.config.summary);
+        }
+        if (data.config.user !== undefined) {
+          document.getElementById('cfgUser').value = data.config.user;
+          localStorage.setItem(CONFIG_KEYS.user, data.config.user);
+        }
+        if (data.config.legacyAssets !== undefined && document.getElementById('cfgLegacyAssets')) {
+          document.getElementById('cfgLegacyAssets').value = data.config.legacyAssets;
+          localStorage.setItem(CONFIG_KEYS.legacyAssets, data.config.legacyAssets);
+        }
+        if (data.config.syncRequirements !== undefined && document.getElementById('cfgSyncRequirements')) {
+          document.getElementById('cfgSyncRequirements').value = data.config.syncRequirements;
+          localStorage.setItem(CONFIG_KEYS.syncRequirements, data.config.syncRequirements);
+        }
+      }
+      if (data.steps && typeof data.steps === 'object') {
+        saveProgressState(data.steps);
+      }
+      checkConfigValidity();
+      renderPrompts();
+      loadProgress();
+    }
+
+    async function connectProjectDirectory() {
+      if (!window.showDirectoryPicker) {
+        alert('お使いのブラウザは直接フォルダ連携に対応していません。Google ChromeまたはMicrosoft Edgeをご利用いただくか、インポート/エクスポート機能をご利用ください。');
+        return;
+      }
+
+      try {
+        projectDirHandle = await window.showDirectoryPicker({
+          mode: 'readwrite'
+        });
+
+        const badge = document.getElementById('dirStatusBadge');
+        badge.classList.add('connected');
+        badge.innerText = `📁 ${projectDirHandle.name} (連携中)`;
+
+        document.getElementById('btnSaveToFile').style.display = 'inline-flex';
+        document.getElementById('btnLoadFromFile').style.display = 'inline-flex';
+
+        // 既存の進捗ファイルが存在するか確認
+        let hasExisting = false;
+        try {
+          const fileHandle = await projectDirHandle.getFileHandle(PROGRESS_FILE_NAME);
+          const file = await fileHandle.getFile();
+          const text = await file.text();
+          if (text) {
+            const data = JSON.parse(text);
+            hasExisting = true;
+            if (confirm(`フォルダ内に前回の進捗ファイル (${PROGRESS_FILE_NAME}) が見つかりました。\n読み込んで反映しますか？`)) {
+              restoreProgressData(data);
+              showToast('フォルダから進捗を復元しました！');
+              return;
+            }
+          }
+        } catch (e) {
+          // ファイルが未作成の場合は新規保存
+        }
+
+        if (!hasExisting) {
+          await saveProgressToFile(false);
+          showToast(`フォルダ「${projectDirHandle.name}」を連携し、初期保存しました！`);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error(err);
+          showToast('フォルダの連携に失敗しました');
+        }
+      }
+    }
+
+    async function saveProgressToFile(showToastMessage = false) {
+      if (!projectDirHandle) return;
+      try {
+        const fileHandle = await projectDirHandle.getFileHandle(PROGRESS_FILE_NAME, { create: true });
+        const writable = await fileHandle.createWritable();
+        const data = buildProgressData();
+        await writable.write(JSON.stringify(data, null, 2));
+        await writable.close();
+        if (showToastMessage) {
+          showToast(`進捗を ${PROGRESS_FILE_NAME} に保存しました！`);
+        }
+      } catch (err) {
+        console.error('File save error:', err);
+        if (showToastMessage) {
+          showToast('ファイル保存に失敗しました');
+        }
+      }
+    }
+
+    async function loadProgressFromFile() {
+      if (!projectDirHandle) return;
+      try {
+        const fileHandle = await projectDirHandle.getFileHandle(PROGRESS_FILE_NAME);
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+        const data = JSON.parse(text);
+        restoreProgressData(data);
+        showToast('フォルダ内の進捗ファイルを読み込みました！');
+      } catch (err) {
+        console.error(err);
+        showToast('進捗ファイルの読み込みに失敗しました');
+      }
+    }
+
+    let autoSaveTimeout = null;
+    function triggerFileAutoSave() {
+      if (!projectDirHandle) return;
+      clearTimeout(autoSaveTimeout);
+      autoSaveTimeout = setTimeout(() => {
+        saveProgressToFile(false);
+      }, 500);
+    }
+
+    // フォールバック: JSONエクスポート & インポート
+    function exportProgressJson() {
+      const data = buildProgressData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const feature = data.config.feature || 'project';
+      a.href = url;
+      a.download = `sdd-progress-${feature}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('進捗JSONをエクスポートしました！');
+    }
+
+    function triggerImportJson() {
+      const input = document.getElementById('importJsonInput');
+      if (input) input.click();
+    }
+
+    function handleImportJsonFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          restoreProgressData(data);
+          showToast('進捗JSONをインポートしました！');
+        } catch (err) {
+          alert('JSONファイルの読み込みに失敗しました。正しいフォーマットか確認してください。');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    // 初期化
+    loadConfigInputs();
+    renderPrompts();
+    loadProgress();
+  </script>
+</body>
+</html>
